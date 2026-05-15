@@ -1,0 +1,729 @@
+// ─── CONFIG ────────────────────────────────────────────────────────────────
+// Replace these with your actual SharePoint values
+const SP_SITE_URL = "https://YOUR_TENANT.sharepoint.com/sites/YOUR_SITE";
+const LIST_NAME = "YOUR_LIST_NAME"; // exact list name
+
+// ─── SharePoint API helpers ─────────────────────────────────────────────────
+async function getToken() {
+  // Uses MSAL / browser session — token must already be acquired via Azure AD login
+  // If you're using a token passed in from a parent app, replace this with that mechanism
+  const tokenResp = await fetch("/.auth/me"); // adjust to your auth endpoint
+  const data = await tokenResp.json();
+  return data?.access_token || null;
+}
+
+async function spFetch(path, options = {}) {
+  const url = `${SP_SITE_URL}/_api/${path}`;
+  const headers = {
+    Accept: "application/json;odata=nometadata",
+    "Content-Type": "application/json;odata=nometadata",
+    ...options.headers,
+  };
+  const res = await fetch(url, { ...options, headers, credentials: "include" });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`SharePoint error ${res.status}: ${err}`);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+async function getListItems() {
+  const data = await spFetch(
+    `web/lists/getbytitle('${LIST_NAME}')/items?$top=500&$orderby=EE_x0020_Name`
+  );
+  return data.value;
+}
+
+async function getFormDigest() {
+  const data = await spFetch("contextinfo", { method: "POST" });
+  return data.FormDigestValue;
+}
+
+async function updateListItem(itemId, fields) {
+  const digest = await getFormDigest();
+  await spFetch(`web/lists/getbytitle('${LIST_NAME}')/items(${itemId})`, {
+    method: "POST",
+    headers: {
+      "X-RequestDigest": digest,
+      "IF-MATCH": "*",
+      "X-HTTP-Method": "MERGE",
+    },
+    body: JSON.stringify(fields),
+  });
+}
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+const BOX_LABELS = {
+  1: { label: "1", desc: "Low Performance / Low Potential", color: "#ef4444" },
+  2: { label: "2", desc: "Moderate", color: "#f97316" },
+  3: { label: "3", desc: "Solid Performer", color: "#eab308" },
+  4: { label: "4", desc: "High Potential", color: "#22c55e" },
+  5: { label: "5", desc: "Top Talent", color: "#0ea5e9" },
+};
+
+const MOBILITY_TIERS = [
+  { value: "1", label: "Tier 1 – Local Only" },
+  { value: "2", label: "Tier 2 – Open to Region" },
+  { value: "3", label: "Tier 3 – Fully Mobile" },
+];
+
+// Map SharePoint internal field names
+const FIELD_MAP = {
+  id: "ID",
+  eeId: "EE_x0020_ID",
+  name: "EE_x0020_Name",
+  title: "Job_x0020_Title",
+  level: "Level",
+  location: "EE_x0020_Location",
+  leader: "Leader",
+  timeInJob: "Time_x0020_in_x0020_Job_x003f_",
+  box2024: "x2024_x0020_Box_x0020_Rating",
+  box2025: "x2025_x0020_Box_x0020_Rating",
+  box2026: "x2026_x0020_Box_x0020_Rating",
+  nextRole: "Next_x0020_Role",
+  mobilityTier: "Mobility_x0020_Tier_x0020_1_x002",
+  suitablyPlaced: "Suitably_x0020_Placed",
+  readyNow: "Ready_x0020_Now",
+  ready12: "Ready_x0020_in_x0020_1_x002d_2_x",
+  ready35: "Ready_x0020_in_x0020_3_x002d_5_x",
+  hireDate: "Hire_x0020_Date",
+  department: "Department",
+  relocationAvail: "Relocation_x0020_Avail",
+  relocationNotes: "Relocation_x0020_Notes",
+  eePhoto: "EE_x0020_Photo",
+  function: "Function",
+};
+
+// ─── Styles ─────────────────────────────────────────────────────────────────
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --surface3: #30363d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #7d8590;
+    --accent: #d4a853;
+    --accent2: #58a6ff;
+    --success: #3fb950;
+    --danger: #f85149;
+    --warn: #d29922;
+    --radius: 10px;
+    --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+
+  .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex; align-items: center; gap: 16px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-logo {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #b8860b);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; color: #000; flex-shrink: 0;
+  }
+  .header h1 { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--text); letter-spacing: -0.5px; }
+  .header p { font-size: 13px; color: var(--text-muted); }
+  .header-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+
+  /* Search & filters */
+  .toolbar {
+    padding: 16px 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; }
+  .search-wrap input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 9px 12px 9px 36px;
+    color: var(--text); font-size: 14px; font-family: 'DM Sans', sans-serif;
+    outline: none; transition: border-color 0.2s;
+  }
+  .search-wrap input:focus { border-color: var(--accent2); }
+  .search-wrap .icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px; }
+  select {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 9px 12px; color: var(--text); font-size: 13px; font-family: 'DM Sans', sans-serif;
+    outline: none; cursor: pointer;
+  }
+  .badge-count {
+    background: var(--surface3); border: 1px solid var(--border);
+    padding: 5px 12px; border-radius: 20px; font-size: 13px; color: var(--text-muted);
+  }
+
+  /* Grid */
+  .grid { padding: 24px 32px; display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  .card.editing { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(212,168,83,0.2); }
+
+  .card-header {
+    padding: 18px 18px 14px;
+    display: flex; gap: 14px; align-items: flex-start;
+    background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .avatar {
+    width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0;
+    background: var(--surface3); overflow: hidden; position: relative;
+    border: 2px solid var(--border);
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .avatar-initials {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 600; color: var(--accent); font-family: 'Fraunces', serif;
+  }
+  .card-name { font-size: 15px; font-weight: 600; color: var(--text); line-height: 1.3; }
+  .card-title { font-size: 12px; color: var(--accent); font-weight: 500; margin-top: 2px; }
+  .card-meta { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .card-actions { margin-left: auto; display: flex; gap: 6px; flex-shrink: 0; }
+
+  .card-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* Box ratings row */
+  .ratings-row { display: flex; gap: 8px; }
+  .rating-chip {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 4px;
+  }
+  .rating-chip .year { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; }
+  .rating-chip .box-val {
+    width: 28px; height: 28px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; color: #fff;
+  }
+  .rating-select {
+    width: 100%; border: none; background: transparent; color: var(--text);
+    font-size: 13px; font-weight: 700; text-align: center; cursor: pointer;
+    outline: none; font-family: 'DM Sans', sans-serif;
+  }
+
+  /* Succession tracks */
+  .section-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+  .succession-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .succession-col {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px;
+  }
+  .succession-col .col-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  }
+  .col-label.now { color: var(--success); }
+  .col-label.y12 { color: var(--warn); }
+  .col-label.y35 { color: var(--accent2); }
+  .succession-names { font-size: 11px; color: var(--text); line-height: 1.6; min-height: 32px; }
+  .succession-textarea {
+    width: 100%; background: transparent; border: none; color: var(--text);
+    font-size: 11px; font-family: 'DM Sans', sans-serif; resize: none;
+    outline: none; line-height: 1.6; min-height: 48px;
+  }
+
+  /* Mobility */
+  .meta-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .meta-pill {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 10px; font-size: 11px; color: var(--text-muted);
+    display: flex; align-items: center; gap: 4px;
+  }
+  .meta-pill strong { color: var(--text); }
+  .mobility-select {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 10px; font-size: 11px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; cursor: pointer; outline: none;
+  }
+
+  /* Relocation notes */
+  .notes-textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; color: var(--text);
+    font-size: 12px; font-family: 'DM Sans', sans-serif; resize: none;
+    outline: none; min-height: 52px;
+  }
+  .notes-textarea:focus { border-color: var(--accent2); }
+
+  /* Photo upload */
+  .photo-upload {
+    display: none;
+  }
+  .photo-btn {
+    position: absolute; bottom: -3px; right: -3px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent); border: 2px solid var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 9px; color: #000; font-weight: 700;
+  }
+
+  /* Buttons */
+  .btn {
+    border: none; border-radius: 8px; padding: 8px 14px;
+    font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer;
+    font-weight: 500; transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+  }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #c49443; }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .btn-danger:hover { background: rgba(248,81,73,0.1); }
+  .btn-success { background: var(--success); color: #000; }
+  .btn-success:hover { background: #2ea043; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
+
+  /* Status bar */
+  .status-bar {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 18px;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: var(--shadow); font-size: 13px; z-index: 200;
+    animation: slideUp 0.3s ease;
+  }
+  .status-bar.success { border-color: var(--success); }
+  .status-bar.error { border-color: var(--danger); }
+  @keyframes slideUp { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+  /* Loading */
+  .loading { display: flex; align-items: center; justify-content: center; padding: 80px; gap: 12px; color: var(--text-muted); }
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 80px 32px; color: var(--text-muted); }
+  .empty h3 { font-size: 18px; margin-bottom: 8px; color: var(--text); }
+
+  /* Config modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center; z-index: 300;
+  }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 28px; width: 500px; max-width: 90vw;
+  }
+  .modal h2 { font-family: 'Fraunces', serif; font-size: 20px; margin-bottom: 6px; }
+  .modal p { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 5px; font-weight: 500; }
+  .form-group input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px; color: var(--text);
+    font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none;
+  }
+  .form-group input:focus { border-color: var(--accent2); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+`;
+
+// ─── Helper: initials from name ───────────────────────────────────────────────
+function initials(name = "") {
+  const parts = name.split(",").reverse().join(" ").trim().split(" ");
+  return parts.slice(0, 2).map((p) => p[0]).join("").toUpperCase();
+}
+
+// ─── Box Rating Selector ──────────────────────────────────────────────────────
+function BoxSelect({ value, onChange, disabled }) {
+  const color = BOX_LABELS[value]?.color || "#555";
+  if (disabled) {
+    return (
+      <div className="box-val" style={{ background: value ? color : "var(--surface3)", width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, color: "#fff" }}>
+        {value || "–"}
+      </div>
+    );
+  }
+  return (
+    <select
+      className="rating-select"
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+      style={{ color: value ? color : "var(--text-muted)", fontWeight: 700 }}
+    >
+      <option value="">–</option>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <option key={n} value={n}>{n}</option>
+      ))}
+    </select>
+  );
+}
+
+// ─── Config Modal ─────────────────────────────────────────────────────────────
+function ConfigModal({ config, onSave }) {
+  const [val, setVal] = useState(config);
+  return (
+    <div className="modal-overlay">
+      <div className="modal">
+        <h2>⚙️ SharePoint Connection</h2>
+        <p>Enter your SharePoint Online site URL and list name to connect.</p>
+        <div className="form-group">
+          <label>Site URL</label>
+          <input placeholder="https://tenant.sharepoint.com/sites/sitename" value={val.siteUrl} onChange={(e) => setVal({ ...val, siteUrl: e.target.value })} />
+        </div>
+        <div className="form-group">
+          <label>List Name (exact)</label>
+          <input placeholder="Succession Planning" value={val.listName} onChange={(e) => setVal({ ...val, listName: e.target.value })} />
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-primary" onClick={() => onSave(val)}>Connect →</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Employee Card ────────────────────────────────────────────────────────────
+function EmployeeCard({ item, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState(null);
+
+  function startEdit() {
+    setDraft({
+      box2024: item[FIELD_MAP.box2024],
+      box2025: item[FIELD_MAP.box2025],
+      box2026: item[FIELD_MAP.box2026],
+      mobilityTier: item[FIELD_MAP.mobilityTier] || "",
+      readyNow: item[FIELD_MAP.readyNow] || "",
+      ready12: item[FIELD_MAP.ready12] || "",
+      ready35: item[FIELD_MAP.ready35] || "",
+      relocationNotes: item[FIELD_MAP.relocationNotes] || "",
+    });
+    setEditing(true);
+  }
+
+  function cancel() { setEditing(false); setDraft(null); }
+
+  async function save() {
+    setSaving(true);
+    try {
+      const spFields = {
+        [FIELD_MAP.box2024]: draft.box2024,
+        [FIELD_MAP.box2025]: draft.box2025,
+        [FIELD_MAP.box2026]: draft.box2026,
+        [FIELD_MAP.mobilityTier]: draft.mobilityTier,
+        [FIELD_MAP.readyNow]: draft.readyNow,
+        [FIELD_MAP.ready12]: draft.ready12,
+        [FIELD_MAP.ready35]: draft.ready35,
+        [FIELD_MAP.relocationNotes]: draft.relocationNotes,
+      };
+      await onSave(item[FIELD_MAP.id], spFields, draft);
+      setEditing(false);
+      setDraft(null);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const name = item[FIELD_MAP.name] || "Unknown";
+  const title = item[FIELD_MAP.title] || "";
+  const location = item[FIELD_MAP.location] || "";
+  const leader = item[FIELD_MAP.leader] || "";
+  const dept = item[FIELD_MAP.department] || "";
+  const timeInJob = item[FIELD_MAP.timeInJob] || "";
+
+  const d = editing ? draft : {
+    box2024: item[FIELD_MAP.box2024],
+    box2025: item[FIELD_MAP.box2025],
+    box2026: item[FIELD_MAP.box2026],
+    mobilityTier: item[FIELD_MAP.mobilityTier] || "",
+    readyNow: item[FIELD_MAP.readyNow] || "",
+    ready12: item[FIELD_MAP.ready12] || "",
+    ready35: item[FIELD_MAP.ready35] || "",
+    relocationNotes: item[FIELD_MAP.relocationNotes] || "",
+  };
+
+  return (
+    <div className={`card ${editing ? "editing" : ""}`}>
+      <div className="card-header">
+        <div className="avatar" style={{ position: "relative" }}>
+          <div className="avatar-initials">{initials(name)}</div>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="card-name">{name.split(",").reverse().join(" ").trim()}</div>
+          <div className="card-title">{title}</div>
+          <div className="card-meta">{dept}{dept && location ? " · " : ""}{location}</div>
+        </div>
+        <div className="card-actions">
+          {!editing ? (
+            <button className="btn btn-ghost btn-sm" onClick={startEdit}>✏️ Edit</button>
+          ) : (
+            <>
+              <button className="btn btn-ghost btn-sm" onClick={cancel} disabled={saving}>Cancel</button>
+              <button className="btn btn-success btn-sm" onClick={save} disabled={saving}>
+                {saving ? "Saving…" : "✓ Save"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="card-body">
+        {/* Box Ratings */}
+        <div>
+          <div className="section-label">Box Ratings</div>
+          <div className="ratings-row">
+            {["2024", "2025", "2026"].map((yr) => {
+              const key = `box${yr}`;
+              return (
+                <div className="rating-chip" key={yr}>
+                  <div className="year">{yr}</div>
+                  <BoxSelect
+                    value={d[key]}
+                    disabled={!editing}
+                    onChange={(v) => setDraft({ ...draft, [key]: v })}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Succession Tracks */}
+        <div>
+          <div className="section-label">Succession Track</div>
+          <div className="succession-grid">
+            {[
+              { key: "readyNow", label: "Ready Now", cls: "now" },
+              { key: "ready12", label: "1–2 Years", cls: "y12" },
+              { key: "ready35", label: "3–5 Years", cls: "y35" },
+            ].map(({ key, label, cls }) => (
+              <div className="succession-col" key={key}>
+                <div className={`col-label ${cls}`}>{label}</div>
+                {editing ? (
+                  <textarea
+                    className="succession-textarea"
+                    value={draft[key]}
+                    placeholder="Names…"
+                    onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
+                  />
+                ) : (
+                  <div className="succession-names">{d[key] || <span style={{ color: "var(--text-muted)" }}>—</span>}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Mobility + meta */}
+        <div className="meta-row">
+          <div className="meta-pill">Leader: <strong>{leader || "—"}</strong></div>
+          {timeInJob && <div className="meta-pill">In role: <strong>{timeInJob}</strong></div>}
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Mobility:</span>
+            {editing ? (
+              <select className="mobility-select" value={draft.mobilityTier} onChange={(e) => setDraft({ ...draft, mobilityTier: e.target.value })}>
+                <option value="">—</option>
+                {MOBILITY_TIERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            ) : (
+              <div className="meta-pill"><strong>{d.mobilityTier ? `Tier ${d.mobilityTier}` : "—"}</strong></div>
+            )}
+          </div>
+        </div>
+
+        {/* Relocation Notes */}
+        <div>
+          <div className="section-label">Relocation Notes</div>
+          {editing ? (
+            <textarea
+              className="notes-textarea"
+              value={draft.relocationNotes}
+              placeholder="Add relocation notes…"
+              onChange={(e) => setDraft({ ...draft, relocationNotes: e.target.value })}
+            />
+          ) : (
+            <div style={{ fontSize: 12, color: d.relocationNotes ? "var(--text)" : "var(--text-muted)", lineHeight: 1.5 }}>
+              {d.relocationNotes || "No relocation notes"}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
+export default function SuccessionPlannerApp() {
+  const [config, setConfig] = useState({ siteUrl: SP_SITE_URL, listName: LIST_NAME });
+  const [showConfig, setShowConfig] = useState(SP_SITE_URL.includes("YOUR_TENANT"));
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filterDept, setFilterDept] = useState("");
+  const [filterTier, setFilterTier] = useState("");
+  const [status, setStatus] = useState(null);
+
+  // Override globals from config
+  useEffect(() => {
+    if (config.siteUrl) window._SP_SITE_URL = config.siteUrl;
+    if (config.listName) window._SP_LIST_NAME = config.listName;
+  }, [config]);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Build dynamic fetch using config
+      const url = `${config.siteUrl}/_api/web/lists/getbytitle('${encodeURIComponent(config.listName)}')/items?$top=500`;
+      const res = await fetch(url, {
+        credentials: "include",
+        headers: { Accept: "application/json;odata=nometadata" },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setItems(data.value || []);
+      showStatus("success", `✓ Loaded ${(data.value || []).length} records`);
+    } catch (e) {
+      showStatus("error", `✗ ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [config]);
+
+  function showStatus(type, msg) {
+    setStatus({ type, msg });
+    setTimeout(() => setStatus(null), 3500);
+  }
+
+  async function handleSave(itemId, spFields, draftValues) {
+    try {
+      // Get form digest
+      const digestRes = await fetch(`${config.siteUrl}/_api/contextinfo`, {
+        method: "POST",
+        credentials: "include",
+        headers: { Accept: "application/json;odata=nometadata", "Content-Type": "application/json;odata=nometadata" },
+      });
+      const digestData = await digestRes.json();
+      const digest = digestData.FormDigestValue;
+
+      const patchUrl = `${config.siteUrl}/_api/web/lists/getbytitle('${encodeURIComponent(config.listName)}')/items(${itemId})`;
+      const patchRes = await fetch(patchUrl, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json;odata=nometadata",
+          "Content-Type": "application/json;odata=nometadata",
+          "X-RequestDigest": digest,
+          "IF-MATCH": "*",
+          "X-HTTP-Method": "MERGE",
+        },
+        body: JSON.stringify(spFields),
+      });
+      if (!patchRes.ok) {
+        const txt = await patchRes.text();
+        throw new Error(txt);
+      }
+
+      // Update local state
+      setItems((prev) =>
+        prev.map((it) => (it[FIELD_MAP.id] === itemId ? { ...it, ...spFields } : it))
+      );
+      showStatus("success", "✓ Saved to SharePoint");
+    } catch (e) {
+      showStatus("error", `✗ Save failed: ${e.message}`);
+      throw e;
+    }
+  }
+
+  // Derived list
+  const depts = [...new Set(items.map((i) => i[FIELD_MAP.department]).filter(Boolean))].sort();
+  const filtered = items.filter((item) => {
+    const name = (item[FIELD_MAP.name] || "").toLowerCase();
+    const title = (item[FIELD_MAP.title] || "").toLowerCase();
+    const dept = item[FIELD_MAP.department] || "";
+    const tier = String(item[FIELD_MAP.mobilityTier] || "");
+    const q = search.toLowerCase();
+    return (
+      (!q || name.includes(q) || title.includes(q)) &&
+      (!filterDept || dept === filterDept) &&
+      (!filterTier || tier === filterTier)
+    );
+  });
+
+  return (
+    <>
+      <style>{styles}</style>
+      <div className="app">
+        {showConfig && (
+          <ConfigModal
+            config={config}
+            onSave={(c) => { setConfig(c); setShowConfig(false); }}
+          />
+        )}
+
+        <div className="header">
+          <div className="header-logo">SP</div>
+          <div>
+            <h1>Succession Planner</h1>
+            <p>{config.siteUrl.replace("https://", "")} · {config.listName}</p>
+          </div>
+          <div className="header-actions">
+            <button className="btn btn-ghost" onClick={() => setShowConfig(true)}>⚙️ Configure</button>
+            <button className="btn btn-primary" onClick={loadData} disabled={loading}>
+              {loading ? "Loading…" : "↻ Load Data"}
+            </button>
+          </div>
+        </div>
+
+        <div className="toolbar">
+          <div className="search-wrap">
+            <span className="icon">🔍</span>
+            <input placeholder="Search by name or title…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
+            <option value="">All Departments</option>
+            {depts.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+          <select value={filterTier} onChange={(e) => setFilterTier(e.target.value)}>
+            <option value="">All Mobility Tiers</option>
+            <option value="1">Tier 1 – Local</option>
+            <option value="2">Tier 2 – Region</option>
+            <option value="3">Tier 3 – Mobile</option>
+          </select>
+          <div className="badge-count">{filtered.length} employees</div>
+        </div>
+
+        {loading ? (
+          <div className="loading"><div className="spinner" /><span>Loading from SharePoint…</span></div>
+        ) : items.length === 0 ? (
+          <div className="empty">
+            <h3>No data loaded</h3>
+            <p>Click "Load Data" to fetch your SharePoint list</p>
+          </div>
+        ) : (
+          <div className="grid">
+            {filtered.map((item) => (
+              <EmployeeCard key={item[FIELD_MAP.id]} item={item} onSave={handleSave} />
+            ))}
+          </div>
+        )}
+
+        {status && (
+          <div className={`status-bar ${status.type}`}>
+            {status.type === "success" ? "✅" : "❌"} {status.msg}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
