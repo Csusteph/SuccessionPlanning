@@ -1,729 +1,384 @@
-// ─── CONFIG ────────────────────────────────────────────────────────────────
-// Replace these with your actual SharePoint values
-const SP_SITE_URL = "https://reyesholdings.sharepoint.com/teams/ta-rccb/Lists/";
-const LIST_NAME = "SAMPLE TR Succession"; // exact list name
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Succession Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0d1117;--surface:#161b22;--surface2:#21262d;--surface3:#30363d;
+      --border:#30363d;--text:#e6edf3;--text-muted:#7d8590;
+      --accent:#d4a853;--accent2:#58a6ff;--success:#3fb950;--danger:#f85149;--warn:#d29922;
+      --radius:10px;--shadow:0 8px 32px rgba(0,0,0,.4);
+    }
+    body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
+    .app{min-height:100vh;display:flex;flex-direction:column}
+    .banner{padding:8px 32px;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+    .banner.ok{background:rgba(63,185,80,.1);color:var(--success);border-color:rgba(63,185,80,.3)}
+    .banner.warn{background:rgba(210,153,34,.1);color:var(--warn);border-color:rgba(210,153,34,.3)}
+    .banner button{margin-left:auto}
+    .header{background:linear-gradient(135deg,#0d1117 0%,#161b22 100%);border-bottom:1px solid var(--border);padding:18px 32px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
+    .header-logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#b8860b);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#000;flex-shrink:0;font-family:'Fraunces',serif}
+    .header h1{font-family:'Fraunces',serif;font-size:20px;font-weight:600;letter-spacing:-.3px}
+    .header p{font-size:12px;color:var(--text-muted)}
+    .header-actions{margin-left:auto;display:flex;gap:10px;align-items:center}
+    .toolbar{padding:16px 32px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:12px;flex-wrap:wrap;align-items:center;position:sticky;top:76px;z-index:90}
+    .search-wrap{position:relative;flex:1;min-width:220px;max-width:420px}
+    .search-wrap input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px 9px 34px;color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s}
+    .search-wrap input:focus{border-color:var(--accent2)}
+    .search-wrap .icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:14px;pointer-events:none}
+    select{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;cursor:pointer}
+    .badge-count{background:var(--surface2);border:1px solid var(--border);padding:5px 12px;border-radius:20px;font-size:12px;color:var(--text-muted)}
+    .stats{padding:20px 32px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+    .stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px}
+    .stat-icon{width:40px;height:40px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px}
+    .stat-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+    .stat-val{font-family:'Fraunces',serif;font-size:24px;font-weight:600}
+    .grid{padding:20px 32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:20px}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:transform .2s,box-shadow .2s}
+    .card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+    .card.editing{border-color:var(--accent);box-shadow:0 0 0 2px rgba(212,168,83,.2)}
+    .card-header{padding:16px 16px 14px;display:flex;gap:12px;align-items:flex-start;background:linear-gradient(180deg,var(--surface2) 0%,var(--surface) 100%);border-bottom:1px solid var(--border)}
+    .avatar{width:48px;height:48px;border-radius:10px;background:var(--surface3);overflow:hidden;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:var(--accent);font-family:'Fraunces',serif;flex-shrink:0}
+    .card-name{font-size:15px;font-weight:600;line-height:1.3}
+    .card-title{font-size:12px;color:var(--accent);font-weight:500;margin-top:2px}
+    .card-meta{font-size:11px;color:var(--text-muted);margin-top:4px}
+    .card-actions{margin-left:auto;display:flex;gap:6px;flex-shrink:0}
+    .card-body{padding:14px 16px;display:flex;flex-direction:column;gap:14px}
+    .ratings-row{display:flex;gap:8px}
+    .rating-chip{flex:1;display:flex;flex-direction:column;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 4px}
+    .rating-chip .year{font-size:10px;color:var(--text-muted);margin-bottom:4px}
+    .box-val{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff}
+    .rating-select{width:100%;border:none;background:transparent;color:var(--text);font-size:13px;font-weight:700;text-align:center;cursor:pointer;outline:none;font-family:inherit}
+    .section-label{font-size:10px;font-weight:600;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px}
+    .succession-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+    .succession-col{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px}
+    .col-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+    .col-label.now{color:var(--success)}.col-label.y12{color:var(--warn)}.col-label.y35{color:var(--accent2)}
+    .succession-names{font-size:11px;line-height:1.6;min-height:32px}
+    .succession-textarea{width:100%;background:transparent;border:none;color:var(--text);font-size:11px;font-family:inherit;resize:none;outline:none;line-height:1.6;min-height:48px}
+    .meta-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .meta-pill{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px}
+    .meta-pill strong{color:var(--text)}
+    .mobility-select{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--text);font-family:inherit;cursor:pointer;outline:none}
+    .notes-textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;font-family:inherit;resize:none;outline:none;min-height:52px}
+    .notes-textarea:focus{border-color:var(--accent2)}
+    .btn{border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border)}
+    .btn-ghost:hover:not(:disabled){background:var(--surface2);color:var(--text)}
+    .btn-primary{background:var(--accent);color:#000}
+    .btn-primary:hover:not(:disabled){background:#c49443}
+    .btn-success{background:var(--success);color:#000}
+    .btn-success:hover:not(:disabled){background:#2ea043}
+    .btn-sm{padding:5px 10px;font-size:12px;border-radius:6px}
+    .status-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 18px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow);font-size:13px;z-index:200;animation:slideUp .3s ease;max-width:90vw}
+    .status-bar.success{border-color:var(--success)}.status-bar.error{border-color:var(--danger)}.status-bar.info{border-color:var(--warn)}
+    @keyframes slideUp{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+    .loading{display:flex;align-items:center;justify-content:center;padding:80px;gap:12px;color:var(--text-muted)}
+    .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .empty{text-align:center;padding:80px 32px;color:var(--text-muted)}
+    .empty h3{font-size:18px;margin-bottom:8px;color:var(--text)}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:300;padding:20px}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:560px;max-width:100%;max-height:90vh;overflow-y:auto}
+    .modal h2{font-family:'Fraunces',serif;font-size:20px;margin-bottom:6px}
+    .modal p{font-size:13px;color:var(--text-muted);margin-bottom:18px}
+    .form-group{margin-bottom:14px}
+    .form-group label{font-size:12px;color:var(--text-muted);display:block;margin-bottom:5px;font-weight:500}
+    .form-group input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:inherit;outline:none}
+    .form-group input:focus{border-color:var(--accent2)}
+    .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+    .field-map{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:10px}
+    .field-map-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:6px}
+    .field-map-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:11px;font-family:ui-monospace,monospace}
+    .field-map-grid > div{display:flex;justify-content:space-between;gap:8px}
+    .field-map-grid .k{color:var(--text-muted)}
+    @media(max-width:640px){
+      .header,.toolbar,.stats,.grid,.banner{padding-left:16px;padding-right:16px}
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script id="embedded-data" type="application/json">{"config":{"siteUrl":"https://reyesholdings.sharepoint.com/teams/ta-rccb","listName":"SAMPLE TR Succession"},"fieldMap":{"id":"ID","eeId":"EE_x0020_ID","name":"EE_x0020_Name","title":"Job_x0020_Title","level":"Level","location":"EE_x0020_Location","leader":"Leader","timeInJob":"Time_x0020_in_x0020_Job_x003f_","box2024":"x2024_x0020_Box_x0020_Rating","box2025":"x2025_x0020_Box_x0020_Rating","box2026":"x2026_x0020_Box_x0020_Rating","nextRole":"Next_x0020_Role","mobilityTier":"Mobility_x0020_Tier_x0020_1_x002","suitablyPlaced":"Suitably_x0020_Placed","readyNow":"Ready_x0020_Now","ready12":"Ready_x0020_in_x0020_1_x002d_2_x","ready35":"Ready_x0020_in_x0020_3_x002d_5_x","hireDate":"Hire_x0020_Date","department":"Department","relocationAvail":"Relocation_x0020_Avail","relocationNotes":"Relocation_x0020_Notes","eePhoto":"EE_x0020_Photo","function":"Function"},"boxLabels":{"1":{"label":"1","desc":"Low Performance / Low Potential","color":"#ef4444","bg":"bg-red-500"},"2":{"label":"2","desc":"Moderate","color":"#f97316","bg":"bg-orange-500"},"3":{"label":"3","desc":"Solid Performer","color":"#eab308","bg":"bg-yellow-500"},"4":{"label":"4","desc":"High Potential","color":"#22c55e","bg":"bg-green-500"},"5":{"label":"5","desc":"Top Talent","color":"#0ea5e9","bg":"bg-sky-500"}},"mobilityTiers":[{"value":"1","label":"Tier 1 – Local Only"},{"value":"2","label":"Tier 2 – Open to Region"},{"value":"3","label":"Tier 3 – Fully Mobile"}],"sampleEmployees":[{"id":1,"eeId":"E1001","name":"Brower, Stephanie","title":"Sr. Manager, Recruiting","level":"M3","location":"Irvine, CA","leader":"Maria Villegas Rodriguez","department":"RCCB Recruiting","function":"HR","timeInJob":"3 yrs","hireDate":"2021-06-14","box2024":4,"box2025":4,"box2026":5,"nextRole":"Director, Talent Acquisition","mobilityTier":"2","suitablyPlaced":true,"readyNow":"Ilene Johnson","ready12":"Liza Dinh, Anne No","ready35":"Genina Murray","relocationAvail":true,"relocationNotes":"Open to LA / Phoenix metro."},{"id":2,"eeId":"E1002","name":"Johnson, Ilene","title":"Recruiting Manager","level":"M2","location":"Irvine, CA","leader":"Stephanie Brower","department":"RCCB Recruiting","function":"HR","timeInJob":"2 yrs","hireDate":"2022-03-01","box2024":3,"box2025":4,"box2026":4,"nextRole":"Sr. Manager, Recruiting","mobilityTier":"3","suitablyPlaced":true,"readyNow":"","ready12":"Natalia Kucys","ready35":"Bennett Smith","relocationAvail":true,"relocationNotes":"Fully mobile within US."},{"id":3,"eeId":"E1003","name":"Dinh, Liza","title":"Sr. Recruiter","level":"P4","location":"Sacramento, CA","leader":"Stephanie Brower","department":"RCCB Recruiting","function":"HR","timeInJob":"1.5 yrs","hireDate":"2022-09-12","box2024":3,"box2025":4,"box2026":4,"nextRole":"Recruiting Manager","mobilityTier":"2","suitablyPlaced":true,"readyNow":"","ready12":"Daria Coren","ready35":"","relocationAvail":false,"relocationNotes":"Prefers staying in NorCal."},{"id":4,"eeId":"E1004","name":"No, Anne","title":"Recruiter II","level":"P3","location":"Alsip, IL","leader":"Stephanie Brower","department":"RCCB Recruiting","function":"HR","timeInJob":"1 yr","hireDate":"2023-05-22","box2024":3,"box2025":3,"box2026":4,"nextRole":"Sr. Recruiter","mobilityTier":"3","suitablyPlaced":true,"readyNow":"","ready12":"","ready35":"Katie Hunt","relocationAvail":true,"relocationNotes":"Interested in Chicago HQ."},{"id":5,"eeId":"E1005","name":"Murray, Genina","title":"Recruiting Coordinator","level":"P2","location":"Marysville, WA","leader":"Ilene Johnson","department":"RCCB Recruiting","function":"HR","timeInJob":"6 mo","hireDate":"2024-10-08","box2024":2,"box2025":3,"box2026":3,"nextRole":"Recruiter","mobilityTier":"1","suitablyPlaced":true,"readyNow":"","ready12":"","ready35":"","relocationAvail":false,"relocationNotes":""},{"id":6,"eeId":"E1006","name":"Hunt, Katie","title":"Sr. Manager, Education","level":"M3","location":"Chicago, IL","leader":"Maria Villegas Rodriguez","department":"RCCB Education","function":"Learning","timeInJob":"4 yrs","hireDate":"2020-02-18","box2024":5,"box2025":5,"box2026":5,"nextRole":"Director, L&D","mobilityTier":"2","suitablyPlaced":true,"readyNow":"Julie Mccready","ready12":"Bennett Smith","ready35":"","relocationAvail":true,"relocationNotes":"Open to Texas or Florida."},{"id":7,"eeId":"E1007","name":"Mccready, Julie","title":"Education Manager","level":"M2","location":"Chicago, IL","leader":"Katie Hunt","department":"RCCB Education","function":"Learning","timeInJob":"2 yrs","hireDate":"2022-08-04","box2024":4,"box2025":4,"box2026":4,"nextRole":"Sr. Manager, Education","mobilityTier":"3","suitablyPlaced":true,"readyNow":"","ready12":"Denise Mcleod","ready35":"","relocationAvail":true,"relocationNotes":"Mobile nationwide."},{"id":8,"eeId":"E1008","name":"Smith, Bennett","title":"Sr. Learning Designer","level":"P4","location":"Dallas, TX","leader":"Julie Mccready","department":"RCCB Education","function":"Learning","timeInJob":"3 yrs","hireDate":"2021-11-15","box2024":4,"box2025":4,"box2026":5,"nextRole":"Education Manager","mobilityTier":"2","suitablyPlaced":true,"readyNow":"","ready12":"","ready35":"","relocationAvail":false,"relocationNotes":"Settled in DFW area."},{"id":9,"eeId":"E1009","name":"Mcleod, Denise","title":"Learning Designer","level":"P3","location":"Atlanta, GA","leader":"Julie Mccready","department":"RCCB Education","function":"Learning","timeInJob":"1 yr","hireDate":"2023-07-10","box2024":3,"box2025":4,"box2026":4,"nextRole":"Sr. Learning Designer","mobilityTier":"3","suitablyPlaced":true,"readyNow":"","ready12":"","ready35":"","relocationAvail":true,"relocationNotes":""},{"id":10,"eeId":"E1010","name":"Villegas Rodriguez, Maria","title":"Director, Talent Operations","level":"M4","location":"Irvine, CA","leader":"Maria Lane","department":"Talent Operations","function":"HR","timeInJob":"5 yrs","hireDate":"2019-04-22","box2024":5,"box2025":5,"box2026":5,"nextRole":"VP, Talent","mobilityTier":"2","suitablyPlaced":true,"readyNow":"Stephanie Brower, Katie Hunt","ready12":"","ready35":"","relocationAvail":true,"relocationNotes":"Open to relocation for VP role."},{"id":11,"eeId":"E1011","name":"Coren, Daria","title":"Recruiter","level":"P3","location":"Sacramento, CA","leader":"Liza Dinh","department":"RCCB Recruiting","function":"HR","timeInJob":"8 mo","hireDate":"2024-08-19","box2024":2,"box2025":3,"box2026":3,"nextRole":"Sr. Recruiter","mobilityTier":"2","suitablyPlaced":true,"readyNow":"","ready12":"","ready35":"","relocationAvail":false,"relocationNotes":""},{"id":12,"eeId":"E1012","name":"Kucys, Natalia","title":"Sr. Recruiter","level":"P4","location":"Reyes, IL","leader":"Ilene Johnson","department":"RCCB Recruiting","function":"HR","timeInJob":"2 yrs","hireDate":"2022-05-30","box2024":4,"box2025":4,"box2026":4,"nextRole":"Recruiting Manager","mobilityTier":"3","suitablyPlaced":true,"readyNow":"","ready12":"","ready35":"","relocationAvail":true,"relocationNotes":"Open to Midwest moves."},{"id":13,"eeId":"E1013","name":"Lane, Maria","title":"VP, People & Talent","level":"E1","location":"Irvine, CA","leader":"CHRO","department":"Talent Operations","function":"HR","timeInJob":"6 yrs","hireDate":"2018-01-09","box2024":5,"box2025":5,"box2026":5,"nextRole":"SVP / CHRO","mobilityTier":"3","suitablyPlaced":true,"readyNow":"Maria Villegas Rodriguez","ready12":"","ready35":"Stephanie Brower","relocationAvail":true,"relocationNotes":"Open to HQ moves."},{"id":14,"eeId":"E1014","name":"Smith, Jordan","title":"Recruiting Intern","level":"P1","location":"Irvine, CA","leader":"Genina Murray","department":"RCCB Recruiting","function":"HR","timeInJob":"3 mo","hireDate":"2025-01-15","box2024":null,"box2025":2,"box2026":3,"nextRole":"Recruiting Coordinator","mobilityTier":"3","suitablyPlaced":true,"readyNow":"","ready12":"","ready35":"","relocationAvail":true,"relocationNotes":"Open to any location post-grad."}]}</script>
+  <script>
+  (function(){
+    var DATA = JSON.parse(document.getElementById('embedded-data').textContent);
+    var FIELD_MAP = DATA.fieldMap;
+    var BOX_LABELS = DATA.boxLabels;
+    var MOBILITY_TIERS = DATA.mobilityTiers;
+    var SAMPLE = DATA.sampleEmployees;
 
-// ─── SharePoint API helpers ─────────────────────────────────────────────────
-async function getToken() {
-  // Uses MSAL / browser session — token must already be acquired via Azure AD login
-  // If you're using a token passed in from a parent app, replace this with that mechanism
-  const tokenResp = await fetch("/.auth/me"); // adjust to your auth endpoint
-  const data = await tokenResp.json();
-  return data?.access_token || null;
-}
+    // ---- State ----
+    var state = {
+      config: loadConfig() || DATA.config,
+      employees: [],
+      loading: true,
+      search: '',
+      filterDept: '',
+      filterTier: '',
+      source: 'sample',
+      lastError: null,
+      editingId: null,
+      drafts: {},
+      saving: {},
+      configOpen: false,
+      configDraft: null,
+      status: null,
+      statusTimer: null,
+    };
 
-async function spFetch(path, options = {}) {
-  const url = `${SP_SITE_URL}/_api/${path}`;
-  const headers = {
-    Accept: "application/json;odata=nometadata",
-    "Content-Type": "application/json;odata=nometadata",
-    ...options.headers,
-  };
-  const res = await fetch(url, { ...options, headers, credentials: "include" });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`SharePoint error ${res.status}: ${err}`);
-  }
-  return res.status === 204 ? null : res.json();
-}
+    function loadConfig(){
+      try{var raw=localStorage.getItem('succession-planner.sp-config');if(raw){var p=JSON.parse(raw);if(p&&p.siteUrl&&p.listName)return p;}}catch(e){}return null;
+    }
+    function saveConfig(c){try{localStorage.setItem('succession-planner.sp-config',JSON.stringify(c));}catch(e){}}
 
-async function getListItems() {
-  const data = await spFetch(
-    `web/lists/getbytitle('${LIST_NAME}')/items?$top=500&$orderby=EE_x0020_Name`
-  );
-  return data.value;
-}
+    function detectedSiteUrl(){
+      try{var ctx=window._spPageContextInfo;if(ctx){return ctx.webAbsoluteUrl||ctx.siteAbsoluteUrl||null;}}catch(e){}return null;
+    }
+    function inSharePoint(){
+      try{if(window._spPageContextInfo)return true;}catch(e){}
+      return /.sharepoint.com$/i.test(location.hostname);
+    }
 
-async function getFormDigest() {
-  const data = await spFetch("contextinfo", { method: "POST" });
-  return data.FormDigestValue;
-}
+    // ---- SharePoint client ----
+    function spHeaders(extra){var h={Accept:'application/json;odata=nometadata','Content-Type':'application/json;odata=nometadata'};if(extra)for(var k in extra)h[k]=extra[k];return h;}
+    function getDigest(siteUrl){
+      try{var c=window._spPageContextInfo&&window._spPageContextInfo.formDigestValue;if(c)return Promise.resolve(c);}catch(e){}
+      return fetch(siteUrl.replace(/\/$/,'')+'/_api/contextinfo',{method:'POST',credentials:'include',headers:spHeaders()}).then(function(r){if(!r.ok)throw new Error('digest '+r.status);return r.json();}).then(function(d){return d.FormDigestValue;});
+    }
+    function fetchItems(cfg){
+      var url=cfg.siteUrl.replace(/\/$/,'')+"/_api/web/lists/getbytitle('"+encodeURIComponent(cfg.listName)+"')/items?$top=500";
+      return fetch(url,{credentials:'include',headers:spHeaders()}).then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error('Load '+r.status+': '+t.slice(0,200));});return r.json();}).then(function(d){return (d.value||[]).map(rowToEmployee);});
+    }
+    function updateItem(cfg,id,updates){
+      var site=cfg.siteUrl.replace(/\/$/,'');
+      return getDigest(site).then(function(digest){
+        var url=site+"/_api/web/lists/getbytitle('"+encodeURIComponent(cfg.listName)+"')/items("+id+")";
+        var body=employeeToRow(updates);
+        return fetch(url,{method:'POST',credentials:'include',headers:spHeaders({'X-RequestDigest':digest,'IF-MATCH':'*','X-HTTP-Method':'MERGE'}),body:JSON.stringify(body)}).then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error('Save '+r.status+': '+t.slice(0,200));});});
+      });
+    }
 
-async function updateListItem(itemId, fields) {
-  const digest = await getFormDigest();
-  await spFetch(`web/lists/getbytitle('${LIST_NAME}')/items(${itemId})`, {
-    method: "POST",
-    headers: {
-      "X-RequestDigest": digest,
-      "IF-MATCH": "*",
-      "X-HTTP-Method": "MERGE",
-    },
-    body: JSON.stringify(fields),
-  });
-}
-
-// ─── Constants ───────────────────────────────────────────────────────────────
-const BOX_LABELS = {
-  1: { label: "1", desc: "Low Performance / Low Potential", color: "#ef4444" },
-  2: { label: "2", desc: "Moderate", color: "#f97316" },
-  3: { label: "3", desc: "Solid Performer", color: "#eab308" },
-  4: { label: "4", desc: "High Potential", color: "#22c55e" },
-  5: { label: "5", desc: "Top Talent", color: "#0ea5e9" },
-};
-
-const MOBILITY_TIERS = [
-  { value: "1", label: "Tier 1 – Local Only" },
-  { value: "2", label: "Tier 2 – Open to Region" },
-  { value: "3", label: "Tier 3 – Fully Mobile" },
-];
-
-// Map SharePoint internal field names
-const FIELD_MAP = {
-  id: "ID",
-  eeId: "EE_x0020_ID",
-  name: "EE_x0020_Name",
-  title: "Job_x0020_Title",
-  level: "Level",
-  location: "EE_x0020_Location",
-  leader: "Leader",
-  timeInJob: "Time_x0020_in_x0020_Job_x003f_",
-  box2024: "x2024_x0020_Box_x0020_Rating",
-  box2025: "x2025_x0020_Box_x0020_Rating",
-  box2026: "x2026_x0020_Box_x0020_Rating",
-  nextRole: "Next_x0020_Role",
-  mobilityTier: "Mobility_x0020_Tier_x0020_1_x002",
-  suitablyPlaced: "Suitably_x0020_Placed",
-  readyNow: "Ready_x0020_Now",
-  ready12: "Ready_x0020_in_x0020_1_x002d_2_x",
-  ready35: "Ready_x0020_in_x0020_3_x002d_5_x",
-  hireDate: "Hire_x0020_Date",
-  department: "Department",
-  relocationAvail: "Relocation_x0020_Avail",
-  relocationNotes: "Relocation_x0020_Notes",
-  eePhoto: "EE_x0020_Photo",
-  function: "Function",
-};
-
-// ─── Styles ─────────────────────────────────────────────────────────────────
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg: #0d1117;
-    --surface: #161b22;
-    --surface2: #21262d;
-    --surface3: #30363d;
-    --border: #30363d;
-    --text: #e6edf3;
-    --text-muted: #7d8590;
-    --accent: #d4a853;
-    --accent2: #58a6ff;
-    --success: #3fb950;
-    --danger: #f85149;
-    --warn: #d29922;
-    --radius: 10px;
-    --shadow: 0 8px 32px rgba(0,0,0,0.4);
-  }
-
-  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
-
-  .app { min-height: 100vh; display: flex; flex-direction: column; }
-
-  /* Header */
-  .header {
-    background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
-    border-bottom: 1px solid var(--border);
-    padding: 20px 32px;
-    display: flex; align-items: center; gap: 16px;
-    position: sticky; top: 0; z-index: 100;
-  }
-  .header-logo {
-    width: 40px; height: 40px; border-radius: 10px;
-    background: linear-gradient(135deg, var(--accent), #b8860b);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; font-weight: 700; color: #000; flex-shrink: 0;
-  }
-  .header h1 { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--text); letter-spacing: -0.5px; }
-  .header p { font-size: 13px; color: var(--text-muted); }
-  .header-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
-
-  /* Search & filters */
-  .toolbar {
-    padding: 16px 32px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
-  }
-  .search-wrap { position: relative; flex: 1; min-width: 200px; }
-  .search-wrap input {
-    width: 100%; background: var(--surface2); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 9px 12px 9px 36px;
-    color: var(--text); font-size: 14px; font-family: 'DM Sans', sans-serif;
-    outline: none; transition: border-color 0.2s;
-  }
-  .search-wrap input:focus { border-color: var(--accent2); }
-  .search-wrap .icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px; }
-  select {
-    background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 9px 12px; color: var(--text); font-size: 13px; font-family: 'DM Sans', sans-serif;
-    outline: none; cursor: pointer;
-  }
-  .badge-count {
-    background: var(--surface3); border: 1px solid var(--border);
-    padding: 5px 12px; border-radius: 20px; font-size: 13px; color: var(--text-muted);
-  }
-
-  /* Grid */
-  .grid { padding: 24px 32px; display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; }
-
-  /* Card */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  .card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
-  .card.editing { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(212,168,83,0.2); }
-
-  .card-header {
-    padding: 18px 18px 14px;
-    display: flex; gap: 14px; align-items: flex-start;
-    background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%);
-    border-bottom: 1px solid var(--border);
-  }
-  .avatar {
-    width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0;
-    background: var(--surface3); overflow: hidden; position: relative;
-    border: 2px solid var(--border);
-  }
-  .avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .avatar-initials {
-    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
-    font-size: 18px; font-weight: 600; color: var(--accent); font-family: 'Fraunces', serif;
-  }
-  .card-name { font-size: 15px; font-weight: 600; color: var(--text); line-height: 1.3; }
-  .card-title { font-size: 12px; color: var(--accent); font-weight: 500; margin-top: 2px; }
-  .card-meta { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-  .card-actions { margin-left: auto; display: flex; gap: 6px; flex-shrink: 0; }
-
-  .card-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
-
-  /* Box ratings row */
-  .ratings-row { display: flex; gap: 8px; }
-  .rating-chip {
-    flex: 1; display: flex; flex-direction: column; align-items: center;
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px 4px;
-  }
-  .rating-chip .year { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; }
-  .rating-chip .box-val {
-    width: 28px; height: 28px; border-radius: 6px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 15px; font-weight: 700; color: #fff;
-  }
-  .rating-select {
-    width: 100%; border: none; background: transparent; color: var(--text);
-    font-size: 13px; font-weight: 700; text-align: center; cursor: pointer;
-    outline: none; font-family: 'DM Sans', sans-serif;
-  }
-
-  /* Succession tracks */
-  .section-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
-  .succession-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-  .succession-col {
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px;
-  }
-  .succession-col .col-label {
-    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-    margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
-  }
-  .col-label.now { color: var(--success); }
-  .col-label.y12 { color: var(--warn); }
-  .col-label.y35 { color: var(--accent2); }
-  .succession-names { font-size: 11px; color: var(--text); line-height: 1.6; min-height: 32px; }
-  .succession-textarea {
-    width: 100%; background: transparent; border: none; color: var(--text);
-    font-size: 11px; font-family: 'DM Sans', sans-serif; resize: none;
-    outline: none; line-height: 1.6; min-height: 48px;
-  }
-
-  /* Mobility */
-  .meta-row { display: flex; gap: 8px; flex-wrap: wrap; }
-  .meta-pill {
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 20px; padding: 4px 10px; font-size: 11px; color: var(--text-muted);
-    display: flex; align-items: center; gap: 4px;
-  }
-  .meta-pill strong { color: var(--text); }
-  .mobility-select {
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 20px; padding: 4px 10px; font-size: 11px; color: var(--text);
-    font-family: 'DM Sans', sans-serif; cursor: pointer; outline: none;
-  }
-
-  /* Relocation notes */
-  .notes-textarea {
-    width: 100%; background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px 10px; color: var(--text);
-    font-size: 12px; font-family: 'DM Sans', sans-serif; resize: none;
-    outline: none; min-height: 52px;
-  }
-  .notes-textarea:focus { border-color: var(--accent2); }
-
-  /* Photo upload */
-  .photo-upload {
-    display: none;
-  }
-  .photo-btn {
-    position: absolute; bottom: -3px; right: -3px;
-    width: 18px; height: 18px; border-radius: 50%;
-    background: var(--accent); border: 2px solid var(--surface);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: 9px; color: #000; font-weight: 700;
-  }
-
-  /* Buttons */
-  .btn {
-    border: none; border-radius: 8px; padding: 8px 14px;
-    font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer;
-    font-weight: 500; transition: all 0.15s; display: flex; align-items: center; gap: 6px;
-  }
-  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
-  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
-  .btn-primary { background: var(--accent); color: #000; }
-  .btn-primary:hover { background: #c49443; }
-  .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
-  .btn-danger:hover { background: rgba(248,81,73,0.1); }
-  .btn-success { background: var(--success); color: #000; }
-  .btn-success:hover { background: #2ea043; }
-  .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
-
-  /* Status bar */
-  .status-bar {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 10px; padding: 10px 18px;
-    display: flex; align-items: center; gap: 10px;
-    box-shadow: var(--shadow); font-size: 13px; z-index: 200;
-    animation: slideUp 0.3s ease;
-  }
-  .status-bar.success { border-color: var(--success); }
-  .status-bar.error { border-color: var(--danger); }
-  @keyframes slideUp { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
-
-  /* Loading */
-  .loading { display: flex; align-items: center; justify-content: center; padding: 80px; gap: 12px; color: var(--text-muted); }
-  .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Empty state */
-  .empty { text-align: center; padding: 80px 32px; color: var(--text-muted); }
-  .empty h3 { font-size: 18px; margin-bottom: 8px; color: var(--text); }
-
-  /* Config modal */
-  .modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-    display: flex; align-items: center; justify-content: center; z-index: 300;
-  }
-  .modal {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; padding: 28px; width: 500px; max-width: 90vw;
-  }
-  .modal h2 { font-family: 'Fraunces', serif; font-size: 20px; margin-bottom: 6px; }
-  .modal p { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
-  .form-group { margin-bottom: 14px; }
-  .form-group label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 5px; font-weight: 500; }
-  .form-group input {
-    width: 100%; background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 9px 12px; color: var(--text);
-    font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none;
-  }
-  .form-group input:focus { border-color: var(--accent2); }
-  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-`;
-
-// ─── Helper: initials from name ───────────────────────────────────────────────
-function initials(name = "") {
-  const parts = name.split(",").reverse().join(" ").trim().split(" ");
-  return parts.slice(0, 2).map((p) => p[0]).join("").toUpperCase();
-}
-
-// ─── Box Rating Selector ──────────────────────────────────────────────────────
-function BoxSelect({ value, onChange, disabled }) {
-  const color = BOX_LABELS[value]?.color || "#555";
-  if (disabled) {
-    return (
-      <div className="box-val" style={{ background: value ? color : "var(--surface3)", width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, color: "#fff" }}>
-        {value || "–"}
-      </div>
-    );
-  }
-  return (
-    <select
-      className="rating-select"
-      value={value || ""}
-      onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
-      style={{ color: value ? color : "var(--text-muted)", fontWeight: 700 }}
-    >
-      <option value="">–</option>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <option key={n} value={n}>{n}</option>
-      ))}
-    </select>
-  );
-}
-
-// ─── Config Modal ─────────────────────────────────────────────────────────────
-function ConfigModal({ config, onSave }) {
-  const [val, setVal] = useState(config);
-  return (
-    <div className="modal-overlay">
-      <div className="modal">
-        <h2>⚙️ SharePoint Connection</h2>
-        <p>Enter your SharePoint Online site URL and list name to connect.</p>
-        <div className="form-group">
-          <label>Site URL</label>
-          <input placeholder="https://tenant.sharepoint.com/sites/sitename" value={val.siteUrl} onChange={(e) => setVal({ ...val, siteUrl: e.target.value })} />
-        </div>
-        <div className="form-group">
-          <label>List Name (exact)</label>
-          <input placeholder="Succession Planning" value={val.listName} onChange={(e) => setVal({ ...val, listName: e.target.value })} />
-        </div>
-        <div className="modal-footer">
-          <button className="btn btn-primary" onClick={() => onSave(val)}>Connect →</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Employee Card ────────────────────────────────────────────────────────────
-function EmployeeCard({ item, onSave }) {
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [draft, setDraft] = useState(null);
-
-  function startEdit() {
-    setDraft({
-      box2024: item[FIELD_MAP.box2024],
-      box2025: item[FIELD_MAP.box2025],
-      box2026: item[FIELD_MAP.box2026],
-      mobilityTier: item[FIELD_MAP.mobilityTier] || "",
-      readyNow: item[FIELD_MAP.readyNow] || "",
-      ready12: item[FIELD_MAP.ready12] || "",
-      ready35: item[FIELD_MAP.ready35] || "",
-      relocationNotes: item[FIELD_MAP.relocationNotes] || "",
-    });
-    setEditing(true);
-  }
-
-  function cancel() { setEditing(false); setDraft(null); }
-
-  async function save() {
-    setSaving(true);
-    try {
-      const spFields = {
-        [FIELD_MAP.box2024]: draft.box2024,
-        [FIELD_MAP.box2025]: draft.box2025,
-        [FIELD_MAP.box2026]: draft.box2026,
-        [FIELD_MAP.mobilityTier]: draft.mobilityTier,
-        [FIELD_MAP.readyNow]: draft.readyNow,
-        [FIELD_MAP.ready12]: draft.ready12,
-        [FIELD_MAP.ready35]: draft.ready35,
-        [FIELD_MAP.relocationNotes]: draft.relocationNotes,
+    function rowToEmployee(row){
+      function s(v){return v==null?'':String(v);}
+      function b(v){if(v==null||v==='')return null;var n=typeof v==='number'?v:parseInt(v,10);return (n>=1&&n<=5)?n:null;}
+      function bo(v){if(typeof v==='boolean')return v;if(typeof v==='string')return /^(true|yes|1)$/i.test(v);if(typeof v==='number')return v!==0;return false;}
+      return {
+        id: row[FIELD_MAP.id]||row.Id||row.ID||0,
+        eeId:s(row[FIELD_MAP.eeId]),name:s(row[FIELD_MAP.name]),title:s(row[FIELD_MAP.title]),level:s(row[FIELD_MAP.level]),
+        location:s(row[FIELD_MAP.location]),leader:s(row[FIELD_MAP.leader]),department:s(row[FIELD_MAP.department]),
+        function:s(row[FIELD_MAP.function]),timeInJob:s(row[FIELD_MAP.timeInJob]),hireDate:s(row[FIELD_MAP.hireDate]),
+        box2024:b(row[FIELD_MAP.box2024]),box2025:b(row[FIELD_MAP.box2025]),box2026:b(row[FIELD_MAP.box2026]),
+        nextRole:s(row[FIELD_MAP.nextRole]),mobilityTier:s(row[FIELD_MAP.mobilityTier]),
+        suitablyPlaced:bo(row[FIELD_MAP.suitablyPlaced]),readyNow:s(row[FIELD_MAP.readyNow]),
+        ready12:s(row[FIELD_MAP.ready12]),ready35:s(row[FIELD_MAP.ready35]),
+        relocationAvail:bo(row[FIELD_MAP.relocationAvail]),relocationNotes:s(row[FIELD_MAP.relocationNotes]),
       };
-      await onSave(item[FIELD_MAP.id], spFields, draft);
-      setEditing(false);
-      setDraft(null);
-    } finally {
-      setSaving(false);
     }
-  }
-
-  const name = item[FIELD_MAP.name] || "Unknown";
-  const title = item[FIELD_MAP.title] || "";
-  const location = item[FIELD_MAP.location] || "";
-  const leader = item[FIELD_MAP.leader] || "";
-  const dept = item[FIELD_MAP.department] || "";
-  const timeInJob = item[FIELD_MAP.timeInJob] || "";
-
-  const d = editing ? draft : {
-    box2024: item[FIELD_MAP.box2024],
-    box2025: item[FIELD_MAP.box2025],
-    box2026: item[FIELD_MAP.box2026],
-    mobilityTier: item[FIELD_MAP.mobilityTier] || "",
-    readyNow: item[FIELD_MAP.readyNow] || "",
-    ready12: item[FIELD_MAP.ready12] || "",
-    ready35: item[FIELD_MAP.ready35] || "",
-    relocationNotes: item[FIELD_MAP.relocationNotes] || "",
-  };
-
-  return (
-    <div className={`card ${editing ? "editing" : ""}`}>
-      <div className="card-header">
-        <div className="avatar" style={{ position: "relative" }}>
-          <div className="avatar-initials">{initials(name)}</div>
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="card-name">{name.split(",").reverse().join(" ").trim()}</div>
-          <div className="card-title">{title}</div>
-          <div className="card-meta">{dept}{dept && location ? " · " : ""}{location}</div>
-        </div>
-        <div className="card-actions">
-          {!editing ? (
-            <button className="btn btn-ghost btn-sm" onClick={startEdit}>✏️ Edit</button>
-          ) : (
-            <>
-              <button className="btn btn-ghost btn-sm" onClick={cancel} disabled={saving}>Cancel</button>
-              <button className="btn btn-success btn-sm" onClick={save} disabled={saving}>
-                {saving ? "Saving…" : "✓ Save"}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="card-body">
-        {/* Box Ratings */}
-        <div>
-          <div className="section-label">Box Ratings</div>
-          <div className="ratings-row">
-            {["2024", "2025", "2026"].map((yr) => {
-              const key = `box${yr}`;
-              return (
-                <div className="rating-chip" key={yr}>
-                  <div className="year">{yr}</div>
-                  <BoxSelect
-                    value={d[key]}
-                    disabled={!editing}
-                    onChange={(v) => setDraft({ ...draft, [key]: v })}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Succession Tracks */}
-        <div>
-          <div className="section-label">Succession Track</div>
-          <div className="succession-grid">
-            {[
-              { key: "readyNow", label: "Ready Now", cls: "now" },
-              { key: "ready12", label: "1–2 Years", cls: "y12" },
-              { key: "ready35", label: "3–5 Years", cls: "y35" },
-            ].map(({ key, label, cls }) => (
-              <div className="succession-col" key={key}>
-                <div className={`col-label ${cls}`}>{label}</div>
-                {editing ? (
-                  <textarea
-                    className="succession-textarea"
-                    value={draft[key]}
-                    placeholder="Names…"
-                    onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
-                  />
-                ) : (
-                  <div className="succession-names">{d[key] || <span style={{ color: "var(--text-muted)" }}>—</span>}</div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Mobility + meta */}
-        <div className="meta-row">
-          <div className="meta-pill">Leader: <strong>{leader || "—"}</strong></div>
-          {timeInJob && <div className="meta-pill">In role: <strong>{timeInJob}</strong></div>}
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Mobility:</span>
-            {editing ? (
-              <select className="mobility-select" value={draft.mobilityTier} onChange={(e) => setDraft({ ...draft, mobilityTier: e.target.value })}>
-                <option value="">—</option>
-                {MOBILITY_TIERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            ) : (
-              <div className="meta-pill"><strong>{d.mobilityTier ? `Tier ${d.mobilityTier}` : "—"}</strong></div>
-            )}
-          </div>
-        </div>
-
-        {/* Relocation Notes */}
-        <div>
-          <div className="section-label">Relocation Notes</div>
-          {editing ? (
-            <textarea
-              className="notes-textarea"
-              value={draft.relocationNotes}
-              placeholder="Add relocation notes…"
-              onChange={(e) => setDraft({ ...draft, relocationNotes: e.target.value })}
-            />
-          ) : (
-            <div style={{ fontSize: 12, color: d.relocationNotes ? "var(--text)" : "var(--text-muted)", lineHeight: 1.5 }}>
-              {d.relocationNotes || "No relocation notes"}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Main App ─────────────────────────────────────────────────────────────────
-export default function SuccessionPlannerApp() {
-  const [config, setConfig] = useState({ siteUrl: SP_SITE_URL, listName: LIST_NAME });
-  const [showConfig, setShowConfig] = useState(SP_SITE_URL.includes("YOUR_TENANT"));
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [filterDept, setFilterDept] = useState("");
-  const [filterTier, setFilterTier] = useState("");
-  const [status, setStatus] = useState(null);
-
-  // Override globals from config
-  useEffect(() => {
-    if (config.siteUrl) window._SP_SITE_URL = config.siteUrl;
-    if (config.listName) window._SP_LIST_NAME = config.listName;
-  }, [config]);
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Build dynamic fetch using config
-      const url = `${config.siteUrl}/_api/web/lists/getbytitle('${encodeURIComponent(config.listName)}')/items?$top=500`;
-      const res = await fetch(url, {
-        credentials: "include",
-        headers: { Accept: "application/json;odata=nometadata" },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setItems(data.value || []);
-      showStatus("success", `✓ Loaded ${(data.value || []).length} records`);
-    } catch (e) {
-      showStatus("error", `✗ ${e.message}`);
-    } finally {
-      setLoading(false);
+    function employeeToRow(emp){
+      var o={};var keys=['eeId','name','title','level','location','leader','department','function','timeInJob','hireDate','box2024','box2025','box2026','nextRole','mobilityTier','suitablyPlaced','readyNow','ready12','ready35','relocationAvail','relocationNotes'];
+      keys.forEach(function(k){if(emp[k]!==undefined){o[FIELD_MAP[k]]=k==='mobilityTier'?(emp[k]||null):emp[k];}});
+      return o;
     }
-  }, [config]);
 
-  function showStatus(type, msg) {
-    setStatus({ type, msg });
-    setTimeout(() => setStatus(null), 3500);
-  }
+    // ---- Render ----
+    function escapeHtml(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+    function initials(name){var parts=(name||'').split(',').reverse().join(' ').trim().split(' ').filter(Boolean);return parts.slice(0,2).map(function(p){return p[0];}).join('').toUpperCase();}
+    function displayName(name){return (name||'').split(',').reverse().join(' ').trim();}
 
-  async function handleSave(itemId, spFields, draftValues) {
-    try {
-      // Get form digest
-      const digestRes = await fetch(`${config.siteUrl}/_api/contextinfo`, {
-        method: "POST",
-        credentials: "include",
-        headers: { Accept: "application/json;odata=nometadata", "Content-Type": "application/json;odata=nometadata" },
-      });
-      const digestData = await digestRes.json();
-      const digest = digestData.FormDigestValue;
+    function showStatus(type,msg){state.status={type:type,msg:msg};if(state.statusTimer)clearTimeout(state.statusTimer);state.statusTimer=setTimeout(function(){state.status=null;render();},4000);render();}
 
-      const patchUrl = `${config.siteUrl}/_api/web/lists/getbytitle('${encodeURIComponent(config.listName)}')/items(${itemId})`;
-      const patchRes = await fetch(patchUrl, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          Accept: "application/json;odata=nometadata",
-          "Content-Type": "application/json;odata=nometadata",
-          "X-RequestDigest": digest,
-          "IF-MATCH": "*",
-          "X-HTTP-Method": "MERGE",
-        },
-        body: JSON.stringify(spFields),
-      });
-      if (!patchRes.ok) {
-        const txt = await patchRes.text();
-        throw new Error(txt);
+    function render(){
+      var root=document.getElementById('root');
+      var filtered=getFiltered();
+      var stats=getStats();
+      var depts=getDepts();
+
+      root.innerHTML=''+
+        '<div class="app">'+
+          renderBanner()+
+          renderHeader()+
+          renderToolbar(depts,filtered.length)+
+          renderStats(stats)+
+          (state.loading?'<div class="loading"><div class="spinner"></div><span>Loading…</span></div>':
+            filtered.length===0?'<div class="empty"><h3>No matching employees</h3><p>Try clearing filters.</p></div>':
+            '<div class="grid">'+filtered.map(renderCard).join('')+'</div>')+
+          (state.status?renderStatus():'')+
+          (state.configOpen?renderConfigModal():'')+
+        '</div>';
+      attachEvents();
+    }
+
+    function renderBanner(){
+      if(state.source==='sharepoint'){
+        return '<div class="banner ok">☁️ Connected to <strong style="margin:0 4px">'+escapeHtml(state.config.listName)+'</strong> on <strong style="margin-left:4px">'+escapeHtml(state.config.siteUrl.replace(/^https?:///,''))+'</strong></div>';
       }
-
-      // Update local state
-      setItems((prev) =>
-        prev.map((it) => (it[FIELD_MAP.id] === itemId ? { ...it, ...spFields } : it))
-      );
-      showStatus("success", "✓ Saved to SharePoint");
-    } catch (e) {
-      showStatus("error", `✗ Save failed: ${e.message}`);
-      throw e;
+      var why=state.lastError?(inSharePoint()?' — List fetch failed':' — Not hosted inside SharePoint'):'';
+      return '<div class="banner warn">⚠️ Showing <strong style="margin:0 4px">sample data</strong>'+why+'<button class="btn btn-ghost btn-sm" data-action="open-config">Configure connection</button></div>';
     }
-  }
+    function renderHeader(){
+      return '<div class="header">'+
+        '<div class="header-logo">SP</div>'+
+        '<div><h1>Succession Planner</h1><p>'+escapeHtml(state.config.siteUrl.replace(/^https?:///,''))+' · '+escapeHtml(state.config.listName)+'</p></div>'+
+        '<div class="header-actions">'+
+          '<button class="btn btn-ghost" data-action="open-config">⚙️ SharePoint</button>'+
+          '<button class="btn btn-primary" data-action="reload" '+(state.loading?'disabled':'')+'>'+(state.loading?'Loading…':'↻ Reload')+'</button>'+
+        '</div>'+
+      '</div>';
+    }
+    function renderToolbar(depts,count){
+      var optsDept='<option value="">All Departments</option>'+depts.map(function(d){return '<option value="'+escapeHtml(d)+'" '+(state.filterDept===d?'selected':'')+'>'+escapeHtml(d)+'</option>';}).join('');
+      var optsTier='<option value="">All Mobility Tiers</option>'+MOBILITY_TIERS.map(function(t){return '<option value="'+t.value+'" '+(state.filterTier===t.value?'selected':'')+'>'+escapeHtml(t.label)+'</option>';}).join('');
+      return '<div class="toolbar">'+
+        '<div class="search-wrap"><span class="icon">🔍</span><input id="search-input" placeholder="Search by name, title, or location…" value="'+escapeHtml(state.search)+'" /></div>'+
+        '<select data-filter="dept">'+optsDept+'</select>'+
+        '<select data-filter="tier">'+optsTier+'</select>'+
+        '<div class="badge-count">'+count+' of '+state.employees.length+'</div>'+
+      '</div>';
+    }
+    function renderStats(s){
+      return '<div class="stats">'+
+        statBox('👥','Total Talent',s.total,'var(--accent)')+
+        statBox('🏆','High Potential (Box ≥4 in 2026)',s.high,'var(--success)')+
+        statBox('✈️','Fully Mobile (Tier 3)',s.mobile,'var(--accent2)')+
+      '</div>';
+    }
+    function statBox(icon,label,val,color){
+      return '<div class="stat"><div class="stat-icon" style="color:'+color+'">'+icon+'</div><div><div class="stat-label">'+label+'</div><div class="stat-val">'+val+'</div></div></div>';
+    }
+    function renderCard(emp){
+      var editing=state.editingId===emp.id;
+      var d=editing?state.drafts[emp.id]:emp;
+      var saving=!!state.saving[emp.id];
+      function ratingChip(yr,key){
+        var v=d[key];var color=v&&BOX_LABELS[v]?BOX_LABELS[v].color:'var(--surface3)';
+        var inner=editing
+          ?'<select class="rating-select" data-edit="'+emp.id+'" data-field="'+key+'" style="color:'+(v?color:'var(--text-muted)')+'"><option value="">–</option>'+[1,2,3,4,5].map(function(n){return '<option value="'+n+'" '+(v==n?'selected':'')+'>'+n+'</option>';}).join('')+'</select>'
+          :'<div class="box-val" style="background:'+(v?color:'var(--surface3)')+'">'+(v||'–')+'</div>';
+        return '<div class="rating-chip"><div class="year">'+yr+'</div>'+inner+'</div>';
+      }
+      function track(key,label,cls){
+        var v=d[key]||'';
+        var body=editing
+          ?'<textarea class="succession-textarea" data-edit="'+emp.id+'" data-field="'+key+'" placeholder="Names…">'+escapeHtml(v)+'</textarea>'
+          :'<div class="succession-names">'+(v?escapeHtml(v):'<span style="color:var(--text-muted)">—</span>')+'</div>';
+        return '<div class="succession-col"><div class="col-label '+cls+'">'+label+'</div>'+body+'</div>';
+      }
+      var mobilityBlock=editing
+        ?'<select class="mobility-select" data-edit="'+emp.id+'" data-field="mobilityTier"><option value="">—</option>'+MOBILITY_TIERS.map(function(t){return '<option value="'+t.value+'" '+(d.mobilityTier==t.value?'selected':'')+'>'+escapeHtml(t.label)+'</option>';}).join('')+'</select>'
+        :'<div class="meta-pill"><strong>'+(d.mobilityTier?'Tier '+d.mobilityTier:'—')+'</strong></div>';
+      var notesBlock=editing
+        ?'<textarea class="notes-textarea" data-edit="'+emp.id+'" data-field="relocationNotes" placeholder="Add relocation notes…">'+escapeHtml(d.relocationNotes||'')+'</textarea>'
+        :'<div style="font-size:12px;line-height:1.5;color:'+(d.relocationNotes?'var(--text)':'var(--text-muted)')+'">'+(d.relocationNotes?escapeHtml(d.relocationNotes):'No relocation notes')+'</div>';
+      var actions=editing
+        ?'<button class="btn btn-ghost btn-sm" data-action="cancel-edit" data-id="'+emp.id+'" '+(saving?'disabled':'')+'>Cancel</button><button class="btn btn-success btn-sm" data-action="save-edit" data-id="'+emp.id+'" '+(saving?'disabled':'')+'>'+(saving?'Saving…':'✓ Save')+'</button>'
+        :'<button class="btn btn-ghost btn-sm" data-action="start-edit" data-id="'+emp.id+'">✏️ Edit</button>';
+      return '<div class="card '+(editing?'editing':'')+'">'+
+        '<div class="card-header">'+
+          '<div class="avatar">'+initials(emp.name)+'</div>'+
+          '<div style="flex:1;min-width:0"><div class="card-name">'+escapeHtml(displayName(emp.name))+'</div><div class="card-title">'+escapeHtml(emp.title||'')+'</div><div class="card-meta">'+escapeHtml(emp.department||'')+(emp.department&&emp.location?' · ':'')+escapeHtml(emp.location||'')+'</div></div>'+
+          '<div class="card-actions">'+actions+'</div>'+
+        '</div>'+
+        '<div class="card-body">'+
+          '<div><div class="section-label">Box Ratings</div><div class="ratings-row">'+ratingChip('2024','box2024')+ratingChip('2025','box2025')+ratingChip('2026','box2026')+'</div></div>'+
+          '<div><div class="section-label">Succession Track</div><div class="succession-grid">'+track('readyNow','Ready Now','now')+track('ready12','1–2 Years','y12')+track('ready35','3–5 Years','y35')+'</div></div>'+
+          '<div class="meta-row"><div class="meta-pill">Leader: <strong>'+escapeHtml(emp.leader||'—')+'</strong></div>'+(emp.timeInJob?'<div class="meta-pill">In role: <strong>'+escapeHtml(emp.timeInJob)+'</strong></div>':'')+'<div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:var(--text-muted)">Mobility:</span>'+mobilityBlock+'</div></div>'+
+          '<div><div class="section-label">Relocation Notes</div>'+notesBlock+'</div>'+
+        '</div>'+
+      '</div>';
+    }
+    function renderStatus(){var s=state.status;var ico=s.type==='success'?'✅':s.type==='error'?'❌':'ℹ️';return '<div class="status-bar '+s.type+'">'+ico+' '+escapeHtml(s.msg)+'</div>';}
+    function renderConfigModal(){
+      var c=state.configDraft||state.config;
+      var det=detectedSiteUrl();
+      var fieldRows=Object.keys(FIELD_MAP).map(function(k){return '<div><span class="k">'+k+'</span><span>'+FIELD_MAP[k]+'</span></div>';}).join('');
+      return '<div class="modal-overlay"><div class="modal">'+
+        '<h2>⚙️ SharePoint Connection</h2>'+
+        '<p>Configure the site URL and list name. Reads and writes go directly to the list when this page is hosted inside SharePoint.</p>'+
+        (det&&det!==c.siteUrl?'<div style="font-size:11px;color:var(--accent);margin-bottom:10px;cursor:pointer" data-action="use-detected">Use detected: '+escapeHtml(det)+'</div>':'')+
+        '<div class="form-group"><label>Site URL</label><input id="cfg-site" placeholder="https://tenant.sharepoint.com/teams/your-team" value="'+escapeHtml(c.siteUrl)+'" /></div>'+
+        '<div class="form-group"><label>List Name (exact)</label><input id="cfg-list" placeholder="SAMPLE TR Succession" value="'+escapeHtml(c.listName)+'" /></div>'+
+        '<div class="field-map"><div class="field-map-title">SharePoint Internal Field Names</div><div class="field-map-grid">'+fieldRows+'</div></div>'+
+        '<div class="modal-footer"><button class="btn btn-ghost" data-action="close-config">Cancel</button><button class="btn btn-primary" data-action="save-config">Save & Connect</button></div>'+
+      '</div></div>';
+    }
 
-  // Derived list
-  const depts = [...new Set(items.map((i) => i[FIELD_MAP.department]).filter(Boolean))].sort();
-  const filtered = items.filter((item) => {
-    const name = (item[FIELD_MAP.name] || "").toLowerCase();
-    const title = (item[FIELD_MAP.title] || "").toLowerCase();
-    const dept = item[FIELD_MAP.department] || "";
-    const tier = String(item[FIELD_MAP.mobilityTier] || "");
-    const q = search.toLowerCase();
-    return (
-      (!q || name.includes(q) || title.includes(q)) &&
-      (!filterDept || dept === filterDept) &&
-      (!filterTier || tier === filterTier)
-    );
-  });
+    // ---- Filtering / Stats ----
+    function getFiltered(){var q=state.search.toLowerCase();return state.employees.filter(function(e){var mq=!q||(e.name||'').toLowerCase().indexOf(q)>=0||(e.title||'').toLowerCase().indexOf(q)>=0||(e.location||'').toLowerCase().indexOf(q)>=0;var md=!state.filterDept||e.department===state.filterDept;var mt=!state.filterTier||e.mobilityTier===state.filterTier;return mq&&md&&mt;});}
+    function getDepts(){var seen={};state.employees.forEach(function(e){if(e.department)seen[e.department]=1;});return Object.keys(seen).sort();}
+    function getStats(){var high=0,mobile=0;state.employees.forEach(function(e){if((e.box2026||0)>=4)high++;if(e.mobilityTier==='3')mobile++;});return{total:state.employees.length,high:high,mobile:mobile};}
 
-  return (
-    <>
-      <style>{styles}</style>
-      <div className="app">
-        {showConfig && (
-          <ConfigModal
-            config={config}
-            onSave={(c) => { setConfig(c); setShowConfig(false); }}
-          />
-        )}
+    // ---- Events ----
+    function attachEvents(){
+      document.querySelectorAll('[data-action]').forEach(function(el){
+        el.addEventListener('click',function(){
+          var a=el.dataset.action;var id=el.dataset.id?parseInt(el.dataset.id,10):null;
+          if(a==='reload')return load();
+          if(a==='open-config'){state.configOpen=true;state.configDraft=Object.assign({},state.config);return render();}
+          if(a==='close-config'){state.configOpen=false;state.configDraft=null;return render();}
+          if(a==='save-config'){
+            var site=document.getElementById('cfg-site').value.trim();
+            var list=document.getElementById('cfg-list').value.trim();
+            state.config={siteUrl:site,listName:list};saveConfig(state.config);
+            state.configOpen=false;state.configDraft=null;render();load();return;
+          }
+          if(a==='use-detected'){var d=detectedSiteUrl();if(d){state.configDraft=Object.assign({},state.configDraft||state.config,{siteUrl:d});render();}return;}
+          if(a==='start-edit'){state.editingId=id;var emp=state.employees.find(function(e){return e.id===id;});state.drafts[id]=Object.assign({},emp);return render();}
+          if(a==='cancel-edit'){state.editingId=null;delete state.drafts[id];return render();}
+          if(a==='save-edit')return saveEdit(id);
+        });
+      });
+      var si=document.getElementById('search-input');
+      if(si){si.addEventListener('input',function(e){state.search=e.target.value;var f=getFiltered();var bc=document.querySelector('.badge-count');if(bc)bc.textContent=f.length+' of '+state.employees.length;rerenderGrid(f);});}
+      document.querySelectorAll('select[data-filter]').forEach(function(s){s.addEventListener('change',function(e){if(s.dataset.filter==='dept')state.filterDept=e.target.value;else state.filterTier=e.target.value;render();});});
+      document.querySelectorAll('[data-edit]').forEach(function(el){
+        var id=parseInt(el.dataset.edit,10);var field=el.dataset.field;
+        el.addEventListener('change',function(e){var v=e.target.value;if(/^box/.test(field))v=v?parseInt(v,10):null;state.drafts[id]=state.drafts[id]||{};state.drafts[id][field]=v;});
+        el.addEventListener('input',function(e){state.drafts[id]=state.drafts[id]||{};state.drafts[id][field]=e.target.value;});
+      });
+    }
+    function rerenderGrid(filtered){
+      var grid=document.querySelector('.grid')||document.querySelector('.empty');if(!grid)return;
+      var html=filtered.length===0?'<div class="empty"><h3>No matching employees</h3><p>Try clearing filters.</p></div>':'<div class="grid">'+filtered.map(renderCard).join('')+'</div>';
+      var wrap=document.createElement('div');wrap.innerHTML=html;grid.replaceWith(wrap.firstElementChild);attachEvents();
+    }
 
-        <div className="header">
-          <div className="header-logo">SP</div>
-          <div>
-            <h1>Succession Planner</h1>
-            <p>{config.siteUrl.replace("https://", "")} · {config.listName}</p>
-          </div>
-          <div className="header-actions">
-            <button className="btn btn-ghost" onClick={() => setShowConfig(true)}>⚙️ Configure</button>
-            <button className="btn btn-primary" onClick={loadData} disabled={loading}>
-              {loading ? "Loading…" : "↻ Load Data"}
-            </button>
-          </div>
-        </div>
+    function saveEdit(id){
+      var draft=state.drafts[id];if(!draft){state.editingId=null;return render();}
+      state.saving[id]=true;render();
+      var emp=state.employees.find(function(e){return e.id===id;});
+      var prev=Object.assign({},emp);
+      Object.assign(emp,draft);
+      if(state.source==='sharepoint'){
+        updateItem(state.config,id,draft).then(function(){
+          state.saving[id]=false;state.editingId=null;delete state.drafts[id];showStatus('success','Saved to SharePoint');
+        }).catch(function(err){
+          Object.assign(emp,prev);state.saving[id]=false;showStatus('error','Save failed: '+err.message);render();
+        });
+      } else {
+        setTimeout(function(){state.saving[id]=false;state.editingId=null;delete state.drafts[id];showStatus('info','Saved locally (sample data — not synced to SharePoint)');},250);
+      }
+    }
 
-        <div className="toolbar">
-          <div className="search-wrap">
-            <span className="icon">🔍</span>
-            <input placeholder="Search by name or title…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          </div>
-          <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
-            <option value="">All Departments</option>
-            {depts.map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <select value={filterTier} onChange={(e) => setFilterTier(e.target.value)}>
-            <option value="">All Mobility Tiers</option>
-            <option value="1">Tier 1 – Local</option>
-            <option value="2">Tier 2 – Region</option>
-            <option value="3">Tier 3 – Mobile</option>
-          </select>
-          <div className="badge-count">{filtered.length} employees</div>
-        </div>
+    function load(){
+      state.loading=true;state.lastError=null;render();
+      fetchItems(state.config).then(function(items){
+        state.employees=items;state.source='sharepoint';state.loading=false;
+        showStatus('success','Loaded '+items.length+' records from SharePoint');
+      }).catch(function(err){
+        state.lastError=err.message;state.employees=SAMPLE;state.source='sample';state.loading=false;
+        showStatus('error','SharePoint unavailable — showing sample data');
+      });
+    }
 
-        {loading ? (
-          <div className="loading"><div className="spinner" /><span>Loading from SharePoint…</span></div>
-        ) : items.length === 0 ? (
-          <div className="empty">
-            <h3>No data loaded</h3>
-            <p>Click "Load Data" to fetch your SharePoint list</p>
-          </div>
-        ) : (
-          <div className="grid">
-            {filtered.map((item) => (
-              <EmployeeCard key={item[FIELD_MAP.id]} item={item} onSave={handleSave} />
-            ))}
-          </div>
-        )}
-
-        {status && (
-          <div className={`status-bar ${status.type}`}>
-            {status.type === "success" ? "✅" : "❌"} {status.msg}
-          </div>
-        )}
-      </div>
-    </>
-  );
-}
+    load();
+  })();
+  </script>
+</body>
+</html>
