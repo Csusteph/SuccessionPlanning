@@ -1,197 +1,849 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Succession Planner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0d1117;--surface:#161b22;--surface2:#21262d;--surface3:#30363d;--border:#30363d;--text:#e6edf3;--text-muted:#7d8590;--accent:#d4a853;--accent2:#58a6ff;--success:#3fb950;--danger:#f85149;--warn:#d29922;--radius:10px;--shadow:0 8px 32px rgba(0,0,0,.4)}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,Segoe UI,sans-serif;min-height:100vh}
-.app{min-height:100vh;display:flex;flex-direction:column}
-.banner{padding:8px 32px;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.banner.ok{background:rgba(63,185,80,.1);color:var(--success);border-color:rgba(63,185,80,.3)}
-.banner.warn{background:rgba(210,153,34,.1);color:var(--warn);border-color:rgba(210,153,34,.3)}
+:root{
+  --bg:#0b0f14;--surface:#13181f;--surface2:#1c2330;--surface3:#252d3a;--border:#2a3341;
+  --text:#e8edf4;--text-muted:#6b7a90;--text-dim:#4a5568;
+  --accent:#d4a853;--accent-dim:rgba(212,168,83,.15);
+  --blue:#4d9ef5;--blue-dim:rgba(77,158,245,.12);
+  --green:#3ecf72;--green-dim:rgba(62,207,114,.12);
+  --red:#f05252;--red-dim:rgba(240,82,82,.12);
+  --warn:#e8a03a;--warn-dim:rgba(232,160,58,.12);
+  --radius:10px;--radius-lg:14px;
+  --shadow:0 8px 40px rgba(0,0,0,.5);
+  --shadow-sm:0 2px 12px rgba(0,0,0,.3);
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,sans-serif;min-height:100vh;line-height:1.5}
+
+/* ── Layout ── */
+.app{display:flex;flex-direction:column;min-height:100vh}
+.main-content{flex:1;padding-bottom:60px}
+
+/* ── Banner ── */
+.banner{padding:9px 28px;font-size:12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);letter-spacing:.01em}
+.banner.connected{background:var(--green-dim);color:var(--green);border-color:rgba(62,207,114,.25)}
+.banner.sample{background:var(--warn-dim);color:var(--warn);border-color:rgba(232,160,58,.25)}
+.banner.error-state{background:var(--red-dim);color:var(--red);border-color:rgba(240,82,82,.25)}
+.banner .dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
 .banner .spacer{margin-left:auto}
-.header{background:linear-gradient(135deg,#0d1117 0%,#161b22 100%);border-bottom:1px solid var(--border);padding:18px 32px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
-.header-logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#b8860b);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#000;flex-shrink:0;font-family:'Fraunces',Georgia,serif}
-.header h1{font-family:'Fraunces',Georgia,serif;font-size:20px;font-weight:600;letter-spacing:-.3px}
-.header p{font-size:12px;color:var(--text-muted)}
-.header-actions{margin-left:auto;display:flex;gap:10px;align-items:center}
-.toolbar{padding:16px 32px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:12px;flex-wrap:wrap;align-items:center;position:sticky;top:76px;z-index:90}
-.search-wrap{position:relative;flex:1;min-width:220px;max-width:420px}
-.search-wrap input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px 9px 34px;color:var(--text);font-size:14px;font-family:inherit;outline:none}
-.search-wrap input:focus{border-color:var(--accent2)}
-.search-wrap .icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:14px;pointer-events:none}
-select{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;cursor:pointer}
-.badge-count{background:var(--surface2);border:1px solid var(--border);padding:5px 12px;border-radius:20px;font-size:12px;color:var(--text-muted)}
-.stats{padding:20px 32px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
-.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px}
-.stat-icon{width:40px;height:40px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px}
-.stat-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
-.stat-val{font-family:'Fraunces',Georgia,serif;font-size:24px;font-weight:600}
-.grid{padding:20px 32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:20px}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:transform .2s,box-shadow .2s}
+
+/* ── Header ── */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)}
+.logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--accent) 0%,#a8792a 100%);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:15px;font-weight:700;color:#000;flex-shrink:0;letter-spacing:-.5px}
+.header-text h1{font-family:'Fraunces',serif;font-size:18px;font-weight:600;letter-spacing:-.3px;line-height:1.2}
+.header-text p{font-size:11px;color:var(--text-muted);margin-top:1px}
+.header-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+/* ── Toolbar ── */
+.toolbar{padding:12px 28px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:center;position:sticky;top:66px;z-index:90}
+.search-wrap{position:relative;flex:1;min-width:200px;max-width:380px}
+.search-wrap input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px 8px 32px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s}
+.search-wrap input:focus{border-color:var(--blue)}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-dim);font-size:13px;pointer-events:none}
+.filter-select{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;color:var(--text);font-size:12px;font-family:inherit;outline:none;cursor:pointer;transition:border-color .15s}
+.filter-select:focus{border-color:var(--blue)}
+.record-count{margin-left:auto;font-size:11px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);padding:4px 10px;border-radius:20px}
+
+/* ── Stats Strip ── */
+.stats{padding:16px 28px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;display:flex;align-items:center;gap:12px}
+.stat-icon{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.stat-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:2px}
+.stat-value{font-family:'Fraunces',serif;font-size:22px;font-weight:600;line-height:1}
+
+/* ── Grid ── */
+.grid{padding:16px 28px;display:grid;grid-template-columns:repeat(auto-fill,minmax(370px,1fr));gap:16px}
+
+/* ── Card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;transition:transform .18s,box-shadow .18s,border-color .18s}
 .card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
-.card.editing{border-color:var(--accent);box-shadow:0 0 0 2px rgba(212,168,83,.2)}
-.card-header{padding:16px;display:flex;gap:12px;align-items:flex-start;background:linear-gradient(180deg,var(--surface2) 0%,var(--surface) 100%);border-bottom:1px solid var(--border)}
-.avatar{width:48px;height:48px;border-radius:10px;background:var(--surface3);overflow:hidden;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:var(--accent);font-family:'Fraunces',Georgia,serif;flex-shrink:0}
-.card-name{font-size:15px;font-weight:600;line-height:1.3}
-.card-title{font-size:12px;color:var(--accent);font-weight:500;margin-top:2px}
-.card-meta{font-size:11px;color:var(--text-muted);margin-top:4px}
-.card-actions{margin-left:auto;display:flex;gap:6px;flex-shrink:0}
-.card-body{padding:16px;display:flex;flex-direction:column;gap:14px}
-.ratings-row{display:flex;gap:8px}
-.rating-chip{flex:1;display:flex;flex-direction:column;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 4px}
-.rating-chip .year{font-size:10px;color:var(--text-muted);margin-bottom:4px}
-.box-val{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff}
-.rating-select{width:100%;border:none;background:transparent;color:var(--text);font-size:13px;font-weight:700;text-align:center;cursor:pointer;outline:none;font-family:inherit}
-.section-label{font-size:10px;font-weight:600;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px}
-.succession-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
-.succession-col{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px}
-.col-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)}
-.col-label.now{color:var(--success)}.col-label.y12{color:var(--warn)}.col-label.y35{color:var(--accent2)}
-.succession-names{font-size:11px;line-height:1.6;min-height:32px;color:var(--text)}
-.succession-textarea{width:100%;background:transparent;border:none;color:var(--text);font-size:11px;font-family:inherit;resize:none;outline:none;line-height:1.6;min-height:48px}
-.meta-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.meta-pill{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px}
+.card.is-editing{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-dim)}
+.card-head{padding:14px;display:flex;gap:11px;align-items:flex-start;background:linear-gradient(180deg,var(--surface2) 0%,var(--surface) 100%);border-bottom:1px solid var(--border)}
+.avatar{width:44px;height:44px;border-radius:9px;background:var(--surface3);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:var(--accent);font-family:'Fraunces',serif;flex-shrink:0;letter-spacing:-.5px}
+.card-name{font-size:14px;font-weight:600;line-height:1.3}
+.card-title{font-size:11px;color:var(--accent);font-weight:500;margin-top:2px}
+.card-meta{font-size:11px;color:var(--text-muted);margin-top:3px}
+.card-acts{margin-left:auto;display:flex;gap:5px;flex-shrink:0}
+.card-body{padding:14px;display:flex;flex-direction:column;gap:13px}
+
+/* ── Ratings ── */
+.ratings-row{display:flex;gap:7px}
+.rating-chip{flex:1;display:flex;flex-direction:column;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 4px;gap:5px}
+.chip-year{font-size:10px;color:var(--text-muted)}
+.box-badge{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff}
+.rating-sel{width:100%;border:none;background:transparent;font-size:14px;font-weight:700;text-align:center;cursor:pointer;outline:none;font-family:inherit;padding:0}
+
+/* ── Succession ── */
+.suc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.suc-col{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px}
+.suc-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.suc-label.now{color:var(--green)}.suc-label.y12{color:var(--warn)}.suc-label.y35{color:var(--blue)}
+.suc-names{font-size:11px;line-height:1.65;color:var(--text);min-height:30px}
+.suc-names.empty{color:var(--text-dim)}
+.suc-textarea{width:100%;background:transparent;border:none;color:var(--text);font-size:11px;font-family:inherit;resize:none;outline:none;line-height:1.65;min-height:44px}
+
+/* ── Meta row ── */
+.meta-row{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.meta-pill{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:3px}
 .meta-pill strong{color:var(--text)}
-.mobility-select{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--text);font-family:inherit;cursor:pointer;outline:none}
-.notes-textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;font-family:inherit;resize:none;outline:none;min-height:52px}
-.notes-textarea:focus{border-color:var(--accent2)}
-.btn{border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;display:inline-flex;align-items:center;gap:6px}
-.btn:disabled{opacity:.5;cursor:not-allowed}
+.mob-select{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--text);font-family:inherit;cursor:pointer;outline:none}
+
+/* ── Notes ── */
+.notes-view{font-size:12px;line-height:1.55;color:var(--text-muted)}
+.notes-view.has-notes{color:var(--text)}
+.notes-edit{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;font-family:inherit;resize:none;outline:none;min-height:50px;transition:border-color .15s}
+.notes-edit:focus{border-color:var(--blue)}
+
+/* ── Section label ── */
+.sec-label{font-size:9px;font-weight:700;letter-spacing:.9px;color:var(--text-dim);text-transform:uppercase;margin-bottom:7px}
+
+/* ── Buttons ── */
+.btn{border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-family:inherit;cursor:pointer;font-weight:500;display:inline-flex;align-items:center;gap:5px;transition:background .15s,color .15s,opacity .15s;white-space:nowrap}
+.btn:disabled{opacity:.45;cursor:not-allowed}
 .btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border)}
 .btn-ghost:hover:not(:disabled){background:var(--surface2);color:var(--text)}
-.btn-primary{background:var(--accent);color:#000}
+.btn-primary{background:var(--accent);color:#000;font-weight:600}
 .btn-primary:hover:not(:disabled){background:#c49443}
-.btn-success{background:var(--success);color:#000}
-.btn-success:hover:not(:disabled){background:#2ea043}
-.btn-sm{padding:5px 10px;font-size:12px;border-radius:6px}
-.status-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 18px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow);font-size:13px;z-index:200;max-width:90vw}
-.status-bar.success{border-color:var(--success)}.status-bar.error{border-color:var(--danger)}.status-bar.info{border-color:var(--warn)}
-.loading{display:flex;align-items:center;justify-content:center;padding:80px;gap:12px;color:var(--text-muted)}
-.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+.btn-success{background:var(--green);color:#000;font-weight:600}
+.btn-success:hover:not(:disabled){background:#2eb85c}
+.btn-danger{background:var(--red-dim);color:var(--red);border:1px solid rgba(240,82,82,.3)}
+.btn-danger:hover:not(:disabled){background:rgba(240,82,82,.25)}
+.btn-sm{padding:5px 10px;font-size:11px;border-radius:7px}
+
+/* ── States ── */
+.loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:100px 32px;gap:14px;color:var(--text-muted)}
+.spinner{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .75s linear infinite}
+.loading-label{font-size:13px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.empty{text-align:center;padding:80px 32px;color:var(--text-muted)}
-.empty h3{font-size:18px;margin-bottom:8px;color:var(--text)}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:300;padding:20px}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:560px;max-width:100%;max-height:90vh;overflow-y:auto}
-.modal h2{font-family:'Fraunces',Georgia,serif;font-size:20px;margin-bottom:6px}
-.modal p{font-size:13px;color:var(--text-muted);margin-bottom:18px}
+.empty-state{text-align:center;padding:80px 32px;color:var(--text-muted)}
+.empty-state h3{font-family:'Fraunces',serif;font-size:20px;margin-bottom:8px;color:var(--text)}
+.empty-state p{font-size:13px;max-width:400px;margin:0 auto 16px}
+
+/* ── Error panel ── */
+.error-panel{margin:20px 28px;background:var(--red-dim);border:1px solid rgba(240,82,82,.3);border-radius:var(--radius-lg);padding:20px 24px}
+.error-panel h3{font-family:'Fraunces',serif;font-size:16px;color:var(--red);margin-bottom:8px}
+.error-panel p{font-size:13px;color:var(--text-muted);margin-bottom:12px}
+.error-detail{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--text-muted);white-space:pre-wrap;word-break:break-all;margin-bottom:12px;max-height:120px;overflow-y:auto}
+.error-tips{margin:0;padding-left:16px;font-size:12px;color:var(--text-muted);line-height:1.9}
+.error-tips li strong{color:var(--text)}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow);font-size:13px;z-index:500;max-width:88vw;animation:slideUp .25s ease}
+.toast.success{border-color:rgba(62,207,114,.4);color:var(--green)}
+.toast.error{border-color:rgba(240,82,82,.4);color:var(--red)}
+.toast.info{border-color:rgba(232,160,58,.4);color:var(--warn)}
+@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ── Modal ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:400;padding:20px;backdrop-filter:blur(4px)}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;width:600px;max-width:100%;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow)}
+.modal h2{font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-bottom:4px}
+.modal-sub{font-size:13px;color:var(--text-muted);margin-bottom:20px}
+.tab-bar{display:flex;gap:2px;margin-bottom:20px;background:var(--surface2);border-radius:var(--radius);padding:3px}
+.tab{flex:1;padding:7px 10px;font-size:12px;font-weight:500;font-family:inherit;border:none;background:transparent;color:var(--text-muted);border-radius:8px;cursor:pointer;transition:background .15s,color .15s}
+.tab.active{background:var(--surface3);color:var(--text)}
 .form-group{margin-bottom:14px}
-.form-group label{font-size:12px;color:var(--text-muted);display:block;margin-bottom:5px;font-weight:500}
-.form-group input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-family:inherit;outline:none}
-.form-group input:focus{border-color:var(--accent2)}
-.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
-.field-map{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:10px}
-.field-map-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:6px}
-.field-map-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:11px;font-family:ui-monospace,Menlo,monospace}
-.field-map-grid > div{display:flex;justify-content:space-between;gap:8px}
-.field-map-grid .k{color:var(--text-muted)}
-@media(max-width:640px){.header,.toolbar,.stats,.grid,.banner{padding-left:16px;padding-right:16px}}
+.form-label{font-size:11px;color:var(--text-muted);display:block;margin-bottom:5px;font-weight:600;letter-spacing:.3px;text-transform:uppercase}
+.form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s}
+.form-input:focus{border-color:var(--blue)}
+.form-hint{font-size:11px;color:var(--text-dim);margin-top:4px}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+
+/* ── Field map table ── */
+.field-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}
+.field-table th{text-align:left;padding:6px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);border-bottom:1px solid var(--border)}
+.field-table td{padding:5px 10px;border-bottom:1px solid rgba(42,51,65,.5);vertical-align:middle}
+.field-table td:first-child{color:var(--text-muted);font-family:ui-monospace,Menlo,monospace}
+.field-table .field-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:11px;font-family:ui-monospace,Menlo,monospace;outline:none}
+.field-table .field-input:focus{border-color:var(--blue)}
+
+/* ── Discovery ── */
+.disco-area{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--text-muted);min-height:120px;max-height:240px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+.disco-hint{font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.6}
+.field-detected{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.field-tag{background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--text-muted);cursor:pointer;transition:background .15s,color .15s}
+.field-tag:hover{background:var(--accent-dim);color:var(--accent);border-color:rgba(212,168,83,.3)}
+
+@media(max-width:640px){
+  .header,.toolbar,.stats,.grid,.banner,.error-panel{padding-left:14px;padding-right:14px}
+  .grid{grid-template-columns:1fr}
+  .toolbar{top:60px}
+}
 </style>
 </head>
 <body>
 <div id="root"></div>
-<script id="embedded-data" type="application/json">{"config":{"siteUrl":"https://reyesholdings.sharepoint.com/teams/ta-rccb","listName":"SAMPLE TR Succession"},"fieldMap":{"id":"ID","eeId":"EE_x0020_ID","name":"EE_x0020_Name","title":"Job_x0020_Title","level":"Level","location":"EE_x0020_Location","leader":"Leader","timeInJob":"Time_x0020_in_x0020_Job_x003f_","box2024":"x2024_x0020_Box_x0020_Rating","box2025":"x2025_x0020_Box_x0020_Rating","box2026":"x2026_x0020_Box_x0020_Rating","nextRole":"Next_x0020_Role","mobilityTier":"Mobility_x0020_Tier_x0020_1_x002","suitablyPlaced":"Suitably_x0020_Placed","readyNow":"Ready_x0020_Now","ready12":"Ready_x0020_in_x0020_1_x002d_2_x","ready35":"Ready_x0020_in_x0020_3_x002d_5_x","hireDate":"Hire_x0020_Date","department":"Department","relocationAvail":"Relocation_x0020_Avail","relocationNotes":"Relocation_x0020_Notes","eePhoto":"EE_x0020_Photo","function":"Function"},"boxLabels":{"1":{"label":"1","desc":"Low Performance / Low Potential","color":"#ef4444","bg":"bg-red-500"},"2":{"label":"2","desc":"Moderate","color":"#f97316","bg":"bg-orange-500"},"3":{"label":"3","desc":"Solid Performer","color":"#eab308","bg":"bg-yellow-500"},"4":{"label":"4","desc":"High Potential","color":"#22c55e","bg":"bg-green-500"},"5":{"label":"5","desc":"Top Talent","color":"#0ea5e9","bg":"bg-sky-500"}},"mobilityTiers":[{"value":"1","label":"Tier 1 – Local Only"},{"value":"2","label":"Tier 2 – Open to Region"},{"value":"3","label":"Tier 3 – Fully Mobile"}],"sampleEmployees":[{"id":1,"eeId":"E1001","name":"Brower, Stephanie","title":"Sr. Manager, Recruiting","level":"M3","location":"Irvine, CA","leader":"Maria Villegas Rodriguez","department":"RCCB Recruiting","function":"HR","timeInJob":"3 yrs","hireDate":"2021-06-14","box2024":4,"box2025":4,"box2026":5,"nextRole":"Director, Talent Acquisition","mobilityTier":"2","suitablyPlaced":true,"readyNow":"Ilene Johnson","ready12":"Liza Dinh, Anne No","ready35":"Genina Murray","relocationAvail":true,"relocationNotes":"Open to LA / Phoenix metro."},{"id":2,"eeId":"E1002","name":"Johnson, Ilene","title":"Recruiting Manager","level":"M2","location":"Irvine, CA","leader":"Stephanie Brower","department":"RCCB Recruiting","function":"HR","timeInJob":"2 yrs","hireDate":"2022-03-01","box2024":3,"box2025":4,"box2026":4,"nextRole":"Sr. Manager, Recruiting","mobilityTier":"3","suitablyPlaced":true,"readyNow":"","ready12":"Natalia Kucys","ready35":"Bennett Smith","relocationAvail":true,"relocationNotes":"Fully mobile within US."},{"id":3,"eeId":"E1003","name":"Dinh, Liza","title":"Sr. Recruiter","level":"P4","location":"Sacramento, CA","leader":"Stephanie Brower","department":"RCCB Recruiting","function":"HR","timeInJob":"1.5 yrs","hireDate":"2022-09-12","box2024":3,"box2025":4,"box2026":4,"nextRole":"Recruiting Manager","mobilityTier":"2","suitablyPlaced":true,"readyNow":"","ready12":"Daria Coren","ready35":"","relocationAvail":false,"relocationNotes":"Prefers staying in NorCal."},{"id":4,"eeId":"E1004","name":"No, Anne","title":"Recruiter II","level":"P3","location":"Alsip, IL","leader":"Stephanie Brower","department":"RCCB Recruiting","function":"HR","timeInJob":"1 yr","hireDate":"2023-05-22","box2024":3,"box2025":3,"box2026":4,"nextRole":"Sr. Recruiter","mobilityTier":"3","suitablyPlaced":true,"readyNow":"","ready12":"","ready35":"Katie Hunt","relocationAvail":true,"relocationNotes":"Interested in Chicago HQ."},{"id":5,"eeId":"E1005","name":"Murray, Genina","title":"Recruiting Coordinator","level":"P2","location":"Marysville, WA","leader":"Ilene Johnson","department":"RCCB Recruiting","function":"HR","timeInJob":"6 mo","hireDate":"2024-10-08","box2024":2,"box2025":3,"box2026":3,"nextRole":"Recruiter","mobilityTier":"1","suitablyPlaced":true,"readyNow":"","ready12":"","ready35":"","relocationAvail":false,"relocationNotes":""},{"id":6,"eeId":"E1006","name":"Hunt, Katie","title":"Sr. Manager, Education","level":"M3","location":"Chicago, IL","leader":"Maria Villegas Rodriguez","department":"RCCB Education","function":"Learning","timeInJob":"4 yrs","hireDate":"2020-02-18","box2024":5,"box2025":5,"box2026":5,"nextRole":"Director, L&D","mobilityTier":"2","suitablyPlaced":true,"readyNow":"Julie Mccready","ready12":"Bennett Smith","ready35":"","relocationAvail":true,"relocationNotes":"Open to Texas or Florida."},{"id":7,"eeId":"E1007","name":"Mccready, Julie","title":"Education Manager","level":"M2","location":"Chicago, IL","leader":"Katie Hunt","department":"RCCB Education","function":"Learning","timeInJob":"2 yrs","hireDate":"2022-08-04","box2024":4,"box2025":4,"box2026":4,"nextRole":"Sr. Manager, Education","mobilityTier":"3","suitablyPlaced":true,"readyNow":"","ready12":"Denise Mcleod","ready35":"","relocationAvail":true,"relocationNotes":"Mobile nationwide."},{"id":8,"eeId":"E1008","name":"Smith, Bennett","title":"Sr. Learning Designer","level":"P4","location":"Dallas, TX","leader":"Julie Mccready","department":"RCCB Education","function":"Learning","timeInJob":"3 yrs","hireDate":"2021-11-15","box2024":4,"box2025":4,"box2026":5,"nextRole":"Education Manager","mobilityTier":"2","suitablyPlaced":true,"readyNow":"","ready12":"","ready35":"","relocationAvail":false,"relocationNotes":"Settled in DFW area."},{"id":9,"eeId":"E1009","name":"Mcleod, Denise","title":"Learning Designer","level":"P3","location":"Atlanta, GA","leader":"Julie Mccready","department":"RCCB Education","function":"Learning","timeInJob":"1 yr","hireDate":"2023-07-10","box2024":3,"box2025":4,"box2026":4,"nextRole":"Sr. Learning Designer","mobilityTier":"3","suitablyPlaced":true,"readyNow":"","ready12":"","ready35":"","relocationAvail":true,"relocationNotes":""},{"id":10,"eeId":"E1010","name":"Villegas Rodriguez, Maria","title":"Director, Talent Operations","level":"M4","location":"Irvine, CA","leader":"Maria Lane","department":"Talent Operations","function":"HR","timeInJob":"5 yrs","hireDate":"2019-04-22","box2024":5,"box2025":5,"box2026":5,"nextRole":"VP, Talent","mobilityTier":"2","suitablyPlaced":true,"readyNow":"Stephanie Brower, Katie Hunt","ready12":"","ready35":"","relocationAvail":true,"relocationNotes":"Open to relocation for VP role."},{"id":11,"eeId":"E1011","name":"Coren, Daria","title":"Recruiter","level":"P3","location":"Sacramento, CA","leader":"Liza Dinh","department":"RCCB Recruiting","function":"HR","timeInJob":"8 mo","hireDate":"2024-08-19","box2024":2,"box2025":3,"box2026":3,"nextRole":"Sr. Recruiter","mobilityTier":"2","suitablyPlaced":true,"readyNow":"","ready12":"","ready35":"","relocationAvail":false,"relocationNotes":""},{"id":12,"eeId":"E1012","name":"Kucys, Natalia","title":"Sr. Recruiter","level":"P4","location":"Reyes, IL","leader":"Ilene Johnson","department":"RCCB Recruiting","function":"HR","timeInJob":"2 yrs","hireDate":"2022-05-30","box2024":4,"box2025":4,"box2026":4,"nextRole":"Recruiting Manager","mobilityTier":"3","suitablyPlaced":true,"readyNow":"","ready12":"","ready35":"","relocationAvail":true,"relocationNotes":"Open to Midwest moves."},{"id":13,"eeId":"E1013","name":"Lane, Maria","title":"VP, People & Talent","level":"E1","location":"Irvine, CA","leader":"CHRO","department":"Talent Operations","function":"HR","timeInJob":"6 yrs","hireDate":"2018-01-09","box2024":5,"box2025":5,"box2026":5,"nextRole":"SVP / CHRO","mobilityTier":"3","suitablyPlaced":true,"readyNow":"Maria Villegas Rodriguez","ready12":"","ready35":"Stephanie Brower","relocationAvail":true,"relocationNotes":"Open to HQ moves."},{"id":14,"eeId":"E1014","name":"Smith, Jordan","title":"Recruiting Intern","level":"P1","location":"Irvine, CA","leader":"Genina Murray","department":"RCCB Recruiting","function":"HR","timeInJob":"3 mo","hireDate":"2025-01-15","box2024":null,"box2025":2,"box2026":3,"nextRole":"Recruiting Coordinator","mobilityTier":"3","suitablyPlaced":true,"readyNow":"","ready12":"","ready35":"","relocationAvail":true,"relocationNotes":"Open to any location post-grad."}]}</script>
+<script id="app-config" type="application/json">{
+  "siteUrl": "https://reyesholdings.sharepoint.com/teams/ta-rccb",
+  "listName": "SAMPLE TR Succession",
+  "fieldMap": {
+    "id":              "ID",
+    "eeId":            "EE_x0020_ID",
+    "name":            "EE_x0020_Name",
+    "title":           "Job_x0020_Title",
+    "level":           "Level",
+    "location":        "EE_x0020_Location",
+    "leader":          "Leader",
+    "timeInJob":       "Time_x0020_in_x0020_Job_x003f_",
+    "box2024":         "x2024_x0020_Box_x0020_Rating",
+    "box2025":         "x2025_x0020_Box_x0020_Rating",
+    "box2026":         "x2026_x0020_Box_x0020_Rating",
+    "nextRole":        "Next_x0020_Role",
+    "mobilityTier":    "Mobility_x0020_Tier_x0020_1_x002",
+    "suitablyPlaced":  "Suitably_x0020_Placed",
+    "readyNow":        "Ready_x0020_Now",
+    "ready12":         "Ready_x0020_in_x0020_1_x002d_2_x",
+    "ready35":         "Ready_x0020_in_x0020_3_x002d_5_x",
+    "hireDate":        "Hire_x0020_Date",
+    "department":      "Department",
+    "relocationAvail": "Relocation_x0020_Avail",
+    "relocationNotes": "Relocation_x0020_Notes",
+    "function":        "Function"
+  }
+}</script>
 <script>
 (function(){
-  var DATA;
-  try { DATA = JSON.parse(document.getElementById('embedded-data').textContent); }
-  catch (err) { document.getElementById('root').innerHTML = '<div style="padding:40px;color:#f85149;font-family:sans-serif">Failed to parse embedded data: ' + err.message + '</div>'; return; }
-  var FIELD_MAP = DATA.fieldMap;
-  var BOX_LABELS = DATA.boxLabels;
-  var MOBILITY_TIERS = DATA.mobilityTiers;
-  var SAMPLE = DATA.sampleEmployees;
+'use strict';
 
-  var state = {
-    config: loadConfig() || DATA.config,
-    employees: [],
-    loading: true,
-    search: '',
-    filterDept: '',
-    filterTier: '',
-    source: 'sample',
-    lastError: null,
-    editingId: null,
-    drafts: {},
-    saving: {},
-    configOpen: false,
-    status: null,
-    statusTimer: null
-  };
+/* ─────────────────────────────────────────
+   Config & field map
+───────────────────────────────────────── */
+var DEFAULTS = JSON.parse(document.getElementById('app-config').textContent);
 
-  function loadConfig(){ try { var raw = localStorage.getItem('succession-planner.sp-config'); if (raw) { var p = JSON.parse(raw); if (p && p.siteUrl && p.listName) return p; } } catch(e){} return null; }
-  function saveConfig(c){ try { localStorage.setItem('succession-planner.sp-config', JSON.stringify(c)); } catch(e){} }
-  function detectedSiteUrl(){ try { var ctx = window._spPageContextInfo; if (ctx) return ctx.webAbsoluteUrl || ctx.siteAbsoluteUrl || null; } catch(e){} return null; }
-  function inSharePoint(){ try { if (window._spPageContextInfo) return true; } catch(e){} return /\.sharepoint\.com$/i.test(location.hostname); }
+var BOX = {
+  1:{label:'1',desc:'Low Performer / Low Potential', color:'#ef4444'},
+  2:{label:'2',desc:'Needs Development',             color:'#f97316'},
+  3:{label:'3',desc:'Solid Performer',               color:'#eab308'},
+  4:{label:'4',desc:'High Potential',                color:'#22c55e'},
+  5:{label:'5',desc:'Top Talent',                    color:'#0ea5e9'}
+};
 
-  function spHeaders(extra){ var h = { 'Accept': 'application/json;odata=nometadata', 'Content-Type': 'application/json;odata=nometadata' }; if (extra) for (var k in extra) h[k] = extra[k]; return h; }
-  function getDigest(siteUrl){ try { var c = window._spPageContextInfo && window._spPageContextInfo.formDigestValue; if (c) return Promise.resolve(c); } catch(e){} return fetch(siteUrl.replace(/\/$/, '') + '/_api/contextinfo', { method: 'POST', credentials: 'include', headers: spHeaders() }).then(function(r){ if (!r.ok) throw new Error('digest ' + r.status); return r.json(); }).then(function(d){ return d.FormDigestValue; }); }
-  function fetchItems(cfg){ var url = cfg.siteUrl.replace(/\/$/, '') + "/_api/web/lists/getbytitle('" + encodeURIComponent(cfg.listName) + "')/items?$top=500"; return fetch(url, { credentials: 'include', headers: spHeaders() }).then(function(r){ if (!r.ok) return r.text().then(function(t){ throw new Error('Load ' + r.status + ': ' + t.slice(0, 200)); }); return r.json(); }).then(function(d){ return (d.value || []).map(rowToEmployee); }); }
-  function updateItem(cfg, id, updates){ var site = cfg.siteUrl.replace(/\/$/, ''); return getDigest(site).then(function(digest){ var url = site + "/_api/web/lists/getbytitle('" + encodeURIComponent(cfg.listName) + "')/items(" + id + ')'; return fetch(url, { method: 'POST', credentials: 'include', headers: spHeaders({ 'X-RequestDigest': digest, 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' }), body: JSON.stringify(employeeToRow(updates)) }).then(function(r){ if (!r.ok) return r.text().then(function(t){ throw new Error('Save ' + r.status + ': ' + t.slice(0, 200)); }); }); }); }
+var MOBILITY = [
+  {v:'1', label:'Tier 1 – Local Only'},
+  {v:'2', label:'Tier 2 – Open to Region'},
+  {v:'3', label:'Tier 3 – Fully Mobile'}
+];
 
-  function rowToEmployee(row){ function s(v){return v==null?'':String(v);} function b(v){if(v==null||v==='')return null;var n=typeof v==='number'?v:parseInt(v,10);return(n>=1&&n<=5)?n:null;} function bo(v){if(typeof v==='boolean')return v;if(typeof v==='string')return /^(true|yes|1)$/i.test(v);if(typeof v==='number')return v!==0;return false;} return { id: row[FIELD_MAP.id]||row.Id||row.ID||0, eeId:s(row[FIELD_MAP.eeId]), name:s(row[FIELD_MAP.name]), title:s(row[FIELD_MAP.title]), level:s(row[FIELD_MAP.level]), location:s(row[FIELD_MAP.location]), leader:s(row[FIELD_MAP.leader]), department:s(row[FIELD_MAP.department]), function:s(row[FIELD_MAP.function]), timeInJob:s(row[FIELD_MAP.timeInJob]), hireDate:s(row[FIELD_MAP.hireDate]), box2024:b(row[FIELD_MAP.box2024]), box2025:b(row[FIELD_MAP.box2025]), box2026:b(row[FIELD_MAP.box2026]), nextRole:s(row[FIELD_MAP.nextRole]), mobilityTier:s(row[FIELD_MAP.mobilityTier]), suitablyPlaced:bo(row[FIELD_MAP.suitablyPlaced]), readyNow:s(row[FIELD_MAP.readyNow]), ready12:s(row[FIELD_MAP.ready12]), ready35:s(row[FIELD_MAP.ready35]), relocationAvail:bo(row[FIELD_MAP.relocationAvail]), relocationNotes:s(row[FIELD_MAP.relocationNotes]) }; }
-  function employeeToRow(emp){ var o = {}; var keys = ['eeId','name','title','level','location','leader','department','function','timeInJob','hireDate','box2024','box2025','box2026','nextRole','mobilityTier','suitablyPlaced','readyNow','ready12','ready35','relocationAvail','relocationNotes']; keys.forEach(function(k){ if (emp[k] !== undefined) { o[FIELD_MAP[k]] = (k === 'mobilityTier' ? (emp[k] || null) : emp[k]); } }); return o; }
+/* ─────────────────────────────────────────
+   Persistent config
+───────────────────────────────────────── */
+function loadStoredConfig(){
+  try{
+    var raw = localStorage.getItem('sp.succession.cfg');
+    if(raw){ var p=JSON.parse(raw); if(p&&p.siteUrl&&p.listName) return p; }
+  }catch(e){}
+  return null;
+}
+function saveStoredConfig(c){ try{ localStorage.setItem('sp.succession.cfg', JSON.stringify(c)); }catch(e){} }
 
-  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
-  function initials(name){ var parts = (name||'').split(',').reverse().join(' ').trim().split(' ').filter(Boolean); return parts.slice(0,2).map(function(p){return p[0];}).join('').toUpperCase(); }
-  function displayName(name){ return (name||'').split(',').reverse().join(' ').trim(); }
+function detectSiteUrl(){
+  try{ var ctx=window._spPageContextInfo; if(ctx) return ctx.webAbsoluteUrl||ctx.siteAbsoluteUrl||null; }catch(e){}
+  return null;
+}
+function isSharePointHost(){
+  try{ if(window._spPageContextInfo) return true; }catch(e){}
+  return /\.sharepoint\.com$/i.test(location.hostname);
+}
 
-  function showStatus(type, msg){ state.status = { type: type, msg: msg }; if (state.statusTimer) clearTimeout(state.statusTimer); state.statusTimer = setTimeout(function(){ state.status = null; render(); }, 4000); render(); }
+/* ─────────────────────────────────────────
+   State
+───────────────────────────────────────── */
+var stored = loadStoredConfig();
+var S = {
+  config: stored || DEFAULTS,
+  fieldMap: (stored && stored.fieldMap) || DEFAULTS.fieldMap,
+  employees: [],
+  loading: false,
+  loadError: null,
+  source: null,           // 'sharepoint' | null
+  search: '',
+  filterDept: '',
+  filterFunc: '',
+  editingId: null,
+  drafts: {},
+  saving: {},
+  toast: null,
+  toastTimer: null,
+  modal: null,            // 'settings' | 'discovery'
+  modalTab: 'connection', // 'connection' | 'fields'
+  discovery: {raw:'', fields:[]}
+};
 
-  function getFiltered(){ var q = state.search.toLowerCase(); return state.employees.filter(function(e){ var mq = !q || (e.name||'').toLowerCase().indexOf(q)>=0 || (e.title||'').toLowerCase().indexOf(q)>=0 || (e.location||'').toLowerCase().indexOf(q)>=0; var md = !state.filterDept || e.department === state.filterDept; var mt = !state.filterTier || e.mobilityTier === state.filterTier; return mq && md && mt; }); }
-  function getDepts(){ var seen = {}; state.employees.forEach(function(e){ if (e.department) seen[e.department]=1; }); return Object.keys(seen).sort(); }
-  function getStats(){ var high = 0, mobile = 0; state.employees.forEach(function(e){ if ((e.box2026||0) >= 4) high++; if (e.mobilityTier === '3') mobile++; }); return { total: state.employees.length, high: high, mobile: mobile }; }
+/* ─────────────────────────────────────────
+   SP API
+───────────────────────────────────────── */
+function spHeaders(extra){
+  var h={'Accept':'application/json;odata=nometadata','Content-Type':'application/json;odata=nometadata'};
+  if(extra) for(var k in extra) h[k]=extra[k];
+  return h;
+}
 
-  function renderBanner(){ if (state.source === 'sharepoint') { return '<div class="banner ok">Connected to <strong>' + esc(state.config.listName) + '</strong> on <strong>' + esc(state.config.siteUrl.replace(/^https?:\/\//, '')) + '</strong></div>'; } var why = state.lastError ? (inSharePoint() ? ' - List fetch failed' : ' - Not hosted inside SharePoint') : ''; return '<div class="banner warn">Showing <strong>sample data</strong>' + why + '<span class="spacer"></span><button class="btn btn-ghost btn-sm" data-action="open-config">Configure connection</button></div>'; }
-  function renderHeader(){ return '<div class="header"><div class="header-logo">SP</div><div><h1>Succession Planner</h1><p>' + esc(state.config.siteUrl.replace(/^https?:\/\//, '')) + ' &middot; ' + esc(state.config.listName) + '</p></div><div class="header-actions"><button class="btn btn-ghost" data-action="open-config">Settings</button><button class="btn btn-primary" data-action="reload"' + (state.loading ? ' disabled' : '') + '>' + (state.loading ? 'Loading...' : 'Reload') + '</button></div></div>'; }
-  function renderToolbar(depts, count){ var od = '<option value="">All Departments</option>' + depts.map(function(d){ return '<option value="' + esc(d) + '"' + (state.filterDept === d ? ' selected' : '') + '>' + esc(d) + '</option>'; }).join(''); var ot = '<option value="">All Mobility Tiers</option>' + MOBILITY_TIERS.map(function(t){ return '<option value="' + t.value + '"' + (state.filterTier === t.value ? ' selected' : '') + '>' + esc(t.label) + '</option>'; }).join(''); return '<div class="toolbar"><div class="search-wrap"><span class="icon">&#128270;</span><input id="search-input" placeholder="Search by name, title, or location..." value="' + esc(state.search) + '"></div><select data-filter="dept">' + od + '</select><select data-filter="tier">' + ot + '</select><div class="badge-count">' + count + ' of ' + state.employees.length + '</div></div>'; }
-  function renderStats(s){ return '<div class="stats">' + statBox('Total Talent', s.total, 'var(--accent)') + statBox('High Potential (Box 4+, 2026)', s.high, 'var(--success)') + statBox('Fully Mobile (Tier 3)', s.mobile, 'var(--accent2)') + '</div>'; }
-  function statBox(label, val, color){ return '<div class="stat"><div class="stat-icon" style="color:' + color + '">&#9733;</div><div><div class="stat-label">' + esc(label) + '</div><div class="stat-val">' + val + '</div></div></div>'; }
+function getDigest(site){
+  try{ var c=window._spPageContextInfo&&window._spPageContextInfo.formDigestValue; if(c) return Promise.resolve(c); }catch(e){}
+  return fetch(site+'/_api/contextinfo',{method:'POST',credentials:'include',headers:spHeaders()})
+    .then(function(r){ if(!r.ok) throw new Error('Digest '+r.status); return r.json(); })
+    .then(function(d){ return d.FormDigestValue; });
+}
 
-  function ratingChip(yr, key, d, editing, empId){ var v = d[key]; var color = (v && BOX_LABELS[v]) ? BOX_LABELS[v].color : 'var(--surface3)'; var inner; if (editing) { var opts = '<option value="">-</option>'; for (var n = 1; n <= 5; n++) { opts += '<option value="' + n + '"' + (v == n ? ' selected' : '') + '>' + n + '</option>'; } inner = '<select class="rating-select" data-edit="' + empId + '" data-field="' + key + '" style="color:' + (v ? color : 'var(--text-muted)') + '">' + opts + '</select>'; } else { inner = '<div class="box-val" style="background:' + (v ? color : 'var(--surface3)') + '">' + (v != null ? v : '-') + '</div>'; } return '<div class="rating-chip"><div class="year">' + yr + '</div>' + inner + '</div>'; }
-  function track(key, label, cls, d, editing, empId){ var v = d[key] || ''; var body = editing ? ('<textarea class="succession-textarea" data-edit="' + empId + '" data-field="' + key + '" placeholder="Names...">' + esc(v) + '</textarea>') : ('<div class="succession-names">' + (v ? esc(v) : '<span style="color:var(--text-muted)">-</span>') + '</div>'); return '<div class="succession-col"><div class="col-label ' + cls + '">' + label + '</div>' + body + '</div>'; }
-  function renderCard(emp){ var editing = state.editingId === emp.id; var d = editing ? state.drafts[emp.id] : emp; var saving = !!state.saving[emp.id]; var mobBlock; if (editing) { var mopts = '<option value="">-</option>' + MOBILITY_TIERS.map(function(t){ return '<option value="' + t.value + '"' + (d.mobilityTier == t.value ? ' selected' : '') + '>' + esc(t.label) + '</option>'; }).join(''); mobBlock = '<select class="mobility-select" data-edit="' + emp.id + '" data-field="mobilityTier">' + mopts + '</select>'; } else { mobBlock = '<div class="meta-pill"><strong>' + (d.mobilityTier ? 'Tier ' + d.mobilityTier : '-') + '</strong></div>'; } var notesBlock = editing ? ('<textarea class="notes-textarea" data-edit="' + emp.id + '" data-field="relocationNotes" placeholder="Add relocation notes...">' + esc(d.relocationNotes || '') + '</textarea>') : ('<div style="font-size:12px;line-height:1.5;color:' + (d.relocationNotes ? 'var(--text)' : 'var(--text-muted)') + '">' + (d.relocationNotes ? esc(d.relocationNotes) : 'No relocation notes') + '</div>'); var actions = editing ? ('<button class="btn btn-ghost btn-sm" data-action="cancel-edit" data-id="' + emp.id + '"' + (saving ? ' disabled' : '') + '>Cancel</button><button class="btn btn-success btn-sm" data-action="save-edit" data-id="' + emp.id + '"' + (saving ? ' disabled' : '') + '>' + (saving ? 'Saving...' : 'Save') + '</button>') : ('<button class="btn btn-ghost btn-sm" data-action="start-edit" data-id="' + emp.id + '">Edit</button>'); return '<div class="card' + (editing ? ' editing' : '') + '"><div class="card-header"><div class="avatar">' + esc(initials(emp.name)) + '</div><div style="flex:1;min-width:0"><div class="card-name">' + esc(displayName(emp.name)) + '</div><div class="card-title">' + esc(emp.title || '') + '</div><div class="card-meta">' + esc(emp.department || '') + (emp.department && emp.location ? ' &middot; ' : '') + esc(emp.location || '') + '</div></div><div class="card-actions">' + actions + '</div></div><div class="card-body"><div><div class="section-label">Box Ratings</div><div class="ratings-row">' + ratingChip('2024','box2024',d,editing,emp.id) + ratingChip('2025','box2025',d,editing,emp.id) + ratingChip('2026','box2026',d,editing,emp.id) + '</div></div><div><div class="section-label">Succession Track</div><div class="succession-grid">' + track('readyNow','Ready Now','now',d,editing,emp.id) + track('ready12','1-2 Years','y12',d,editing,emp.id) + track('ready35','3-5 Years','y35',d,editing,emp.id) + '</div></div><div class="meta-row"><div class="meta-pill">Leader: <strong>' + esc(emp.leader || '-') + '</strong></div>' + (emp.timeInJob ? '<div class="meta-pill">In role: <strong>' + esc(emp.timeInJob) + '</strong></div>' : '') + '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:11px;color:var(--text-muted)">Mobility:</span>' + mobBlock + '</div></div><div><div class="section-label">Relocation Notes</div>' + notesBlock + '</div></div></div>'; }
+function buildListUrl(cfg){
+  return cfg.siteUrl.replace(/\/$/,'')+"/_api/web/lists/getbytitle('"+encodeURIComponent(cfg.listName)+"')/items?$top=500&$orderby="+encodeURIComponent(S.fieldMap.name||'Title')+" asc";
+}
 
-  function renderStatus(){ var s = state.status; return '<div class="status-bar ' + s.type + '">' + esc(s.msg) + '</div>'; }
-  function renderConfigModal(){ var c = state.config; var det = detectedSiteUrl(); var rows = Object.keys(FIELD_MAP).map(function(k){ return '<div><span class="k">' + k + '</span><span>' + FIELD_MAP[k] + '</span></div>'; }).join(''); return '<div class="modal-overlay"><div class="modal"><h2>SharePoint Connection</h2><p>Configure the site URL and list name. Reads and writes go directly to the list when this page is hosted inside SharePoint.</p>' + (det && det !== c.siteUrl ? '<div style="font-size:11px;color:var(--accent);margin-bottom:10px;cursor:pointer" data-action="use-detected">Use detected: ' + esc(det) + '</div>' : '') + '<div class="form-group"><label>Site URL</label><input id="cfg-site" placeholder="https://tenant.sharepoint.com/teams/your-team" value="' + esc(c.siteUrl) + '"></div><div class="form-group"><label>List Name (exact)</label><input id="cfg-list" placeholder="SAMPLE TR Succession" value="' + esc(c.listName) + '"></div><div class="field-map"><div class="field-map-title">SharePoint Internal Field Names</div><div class="field-map-grid">' + rows + '</div></div><div class="modal-footer"><button class="btn btn-ghost" data-action="close-config">Cancel</button><button class="btn btn-primary" data-action="save-config">Save &amp; Connect</button></div></div></div>'; }
-
-  function render(){ var root = document.getElementById('root'); var filtered = getFiltered(); var stats = getStats(); var depts = getDepts(); var body; if (state.loading) { body = '<div class="loading"><div class="spinner"></div><span>Loading...</span></div>'; } else if (state.employees.length === 0) { body = '<div class="empty"><h3>No data</h3><p>Click Reload to fetch from SharePoint.</p></div>'; } else if (filtered.length === 0) { body = '<div class="empty"><h3>No matching employees</h3><p>Try clearing filters.</p></div>'; } else { body = '<div class="grid">' + filtered.map(renderCard).join('') + '</div>'; } root.innerHTML = '<div class="app">' + renderBanner() + renderHeader() + renderToolbar(depts, filtered.length) + renderStats(stats) + body + (state.status ? renderStatus() : '') + (state.configOpen ? renderConfigModal() : '') + '</div>'; attachEvents(); }
-
-  function attachEvents(){
-    document.querySelectorAll('[data-action]').forEach(function(el){
-      el.addEventListener('click', function(){
-        var a = el.getAttribute('data-action');
-        var idAttr = el.getAttribute('data-id'); var id = idAttr ? parseInt(idAttr, 10) : null;
-        if (a === 'reload') { return load(); }
-        if (a === 'open-config') { state.configOpen = true; return render(); }
-        if (a === 'close-config') { state.configOpen = false; return render(); }
-        if (a === 'save-config') { var site = document.getElementById('cfg-site').value.trim(); var list = document.getElementById('cfg-list').value.trim(); state.config = { siteUrl: site, listName: list }; saveConfig(state.config); state.configOpen = false; render(); return load(); }
-        if (a === 'use-detected') { var dd = detectedSiteUrl(); if (dd) { var siteEl = document.getElementById('cfg-site'); if (siteEl) siteEl.value = dd; } return; }
-        if (a === 'start-edit') { state.editingId = id; var emp = state.employees.find(function(e){ return e.id === id; }); state.drafts[id] = Object.assign({}, emp); return render(); }
-        if (a === 'cancel-edit') { state.editingId = null; delete state.drafts[id]; return render(); }
-        if (a === 'save-edit') { return saveEdit(id); }
+function fetchSP(cfg){
+  return fetch(buildListUrl(cfg),{credentials:'include',headers:spHeaders()})
+    .then(function(r){
+      if(!r.ok) return r.text().then(function(t){
+        throw new Error('HTTP '+r.status+' — '+t.slice(0,300));
       });
+      return r.json();
+    })
+    .then(function(d){ return (d.value||[]).map(rowToEmp); });
+}
+
+function saveSP(cfg, id, data){
+  var site=cfg.siteUrl.replace(/\/$/,'');
+  return getDigest(site).then(function(digest){
+    var url=site+"/_api/web/lists/getbytitle('"+encodeURIComponent(cfg.listName)+"')/items("+id+')';
+    return fetch(url,{
+      method:'POST', credentials:'include',
+      headers:spHeaders({'X-RequestDigest':digest,'IF-MATCH':'*','X-HTTP-Method':'MERGE'}),
+      body:JSON.stringify(empToRow(data))
+    }).then(function(r){
+      if(!r.ok) return r.text().then(function(t){ throw new Error('Save HTTP '+r.status+' — '+t.slice(0,300)); });
     });
-    var si = document.getElementById('search-input'); if (si) { si.addEventListener('input', function(e){ state.search = e.target.value; render(); var sf = document.getElementById('search-input'); if (sf) { sf.focus(); sf.setSelectionRange(state.search.length, state.search.length); } }); }
-    document.querySelectorAll('select[data-filter]').forEach(function(s){ s.addEventListener('change', function(e){ if (s.getAttribute('data-filter') === 'dept') state.filterDept = e.target.value; else state.filterTier = e.target.value; render(); }); });
-    document.querySelectorAll('[data-edit]').forEach(function(el){
-      var id = parseInt(el.getAttribute('data-edit'), 10); var field = el.getAttribute('data-field');
-      var handler = function(e){ var v = e.target.value; if (/^box/.test(field)) v = v ? parseInt(v, 10) : null; state.drafts[id] = state.drafts[id] || {}; state.drafts[id][field] = v; };
-      el.addEventListener('change', handler); el.addEventListener('input', handler);
+  });
+}
+
+/* ─────────────────────────────────────────
+   Data mapping
+───────────────────────────────────────── */
+var FM; // shorthand
+function refreshFM(){ FM = S.fieldMap; }
+
+function rowToEmp(row){
+  refreshFM();
+  function s(v){ return v==null?'':String(v); }
+  function b(v){ if(v==null||v==='') return null; var n=typeof v==='number'?v:parseInt(v,10); return(n>=1&&n<=5)?n:null; }
+  function bo(v){ if(typeof v==='boolean') return v; if(typeof v==='string') return /^(true|yes|1)$/i.test(v); if(typeof v==='number') return v!==0; return false; }
+  return {
+    id: row[FM.id]||row.Id||row.ID||0,
+    eeId:            s(row[FM.eeId]),
+    name:            s(row[FM.name])||s(row.Title),
+    title:           s(row[FM.title]),
+    level:           s(row[FM.level]),
+    location:        s(row[FM.location]),
+    leader:          s(row[FM.leader]),
+    department:      s(row[FM.department]),
+    function:        s(row[FM.function]),
+    timeInJob:       s(row[FM.timeInJob]),
+    hireDate:        s(row[FM.hireDate]),
+    box2024:         b(row[FM.box2024]),
+    box2025:         b(row[FM.box2025]),
+    box2026:         b(row[FM.box2026]),
+    nextRole:        s(row[FM.nextRole]),
+    mobilityTier:    s(row[FM.mobilityTier]),
+    suitablyPlaced:  bo(row[FM.suitablyPlaced]),
+    readyNow:        s(row[FM.readyNow]),
+    ready12:         s(row[FM.ready12]),
+    ready35:         s(row[FM.ready35]),
+    relocationAvail: bo(row[FM.relocationAvail]),
+    relocationNotes: s(row[FM.relocationNotes])
+  };
+}
+
+function empToRow(emp){
+  refreshFM();
+  var o={};
+  var keys=['eeId','name','title','level','location','leader','department','function',
+            'timeInJob','hireDate','box2024','box2025','box2026','nextRole',
+            'mobilityTier','suitablyPlaced','readyNow','ready12','ready35',
+            'relocationAvail','relocationNotes'];
+  keys.forEach(function(k){
+    if(emp[k]!==undefined && FM[k]) o[FM[k]] = emp[k]==null?null:emp[k];
+  });
+  return o;
+}
+
+/* ─────────────────────────────────────────
+   Helpers
+───────────────────────────────────────── */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];}); }
+function initials(n){ return (n||'').split(',').reverse().join(' ').trim().split(' ').filter(Boolean).slice(0,2).map(function(p){return p[0];}).join('').toUpperCase(); }
+function displayName(n){ return (n||'').split(',').reverse().join(' ').trim() || n; }
+function depts(){ var s={}; S.employees.forEach(function(e){ if(e.department) s[e.department]=1; }); return Object.keys(s).sort(); }
+function funcs(){ var s={}; S.employees.forEach(function(e){ if(e.function) s[e.function]=1; }); return Object.keys(s).sort(); }
+function filtered(){
+  var q=S.search.toLowerCase();
+  return S.employees.filter(function(e){
+    var mq=!q||(e.name||'').toLowerCase().indexOf(q)>=0||(e.title||'').toLowerCase().indexOf(q)>=0||(e.location||'').toLowerCase().indexOf(q)>=0||(e.leader||'').toLowerCase().indexOf(q)>=0;
+    var md=!S.filterDept||e.department===S.filterDept;
+    var mf=!S.filterFunc||e.function===S.filterFunc;
+    return mq&&md&&mf;
+  });
+}
+function stats(){
+  var hi=0,mob=0;
+  S.employees.forEach(function(e){ if((e.box2026||0)>=4) hi++; if(e.mobilityTier==='3') mob++; });
+  return {total:S.employees.length,hi:hi,mob:mob};
+}
+
+/* ─────────────────────────────────────────
+   Toast
+───────────────────────────────────────── */
+function toast(type, msg){
+  S.toast={type:type,msg:msg};
+  if(S.toastTimer) clearTimeout(S.toastTimer);
+  S.toastTimer=setTimeout(function(){ S.toast=null; render(); },4000);
+  render();
+}
+
+/* ─────────────────────────────────────────
+   Load
+───────────────────────────────────────── */
+function load(){
+  S.loading=true; S.loadError=null; render();
+  fetchSP(S.config)
+    .then(function(items){
+      S.employees=items; S.source='sharepoint'; S.loading=false;
+      toast('success','Loaded '+items.length+' records from SharePoint');
+    })
+    .catch(function(err){
+      S.loadError=err.message; S.source=null; S.loading=false; S.employees=[];
+      render();
     });
+}
+
+/* ─────────────────────────────────────────
+   Save edit
+───────────────────────────────────────── */
+function saveEdit(id){
+  var draft=S.drafts[id];
+  if(!draft){ S.editingId=null; return render(); }
+  S.saving[id]=true; render();
+  var emp=S.employees.find(function(e){ return e.id===id; });
+  var prev=Object.assign({},emp);
+  Object.assign(emp,draft);
+  saveSP(S.config, id, draft)
+    .then(function(){
+      S.saving[id]=false; S.editingId=null; delete S.drafts[id];
+      toast('success','Saved to SharePoint ✓');
+    })
+    .catch(function(err){
+      Object.assign(emp,prev);
+      S.saving[id]=false;
+      toast('error','Save failed: '+err.message);
+      render();
+    });
+}
+
+/* ─────────────────────────────────────────
+   Discovery
+───────────────────────────────────────── */
+function runDiscovery(){
+  var site=S.config.siteUrl.replace(/\/$/,'');
+  var url=site+"/_api/web/lists/getbytitle('"+encodeURIComponent(S.config.listName)+"')/items?$top=1";
+  S.discovery={raw:'Fetching one row from list…',fields:[]};
+  render();
+  fetch(url,{credentials:'include',headers:spHeaders()})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(d){
+      var item=(d.value||[])[0]||{};
+      var keys=Object.keys(item).filter(function(k){ return k!=='@odata.etag'&&k!=='odata.etag'; }).sort();
+      S.discovery={raw:JSON.stringify(item,null,2), fields:keys};
+      render();
+    })
+    .catch(function(err){
+      S.discovery={raw:'Error: '+err.message+'\n\nMake sure you are logged in and the list name is correct.',fields:[]};
+      render();
+    });
+}
+
+/* ─────────────────────────────────────────
+   Render helpers
+───────────────────────────────────────── */
+function renderBanner(){
+  if(S.source==='sharepoint'){
+    return '<div class="banner connected"><span class="dot"></span>Live — <strong>'+esc(S.config.listName)+'</strong> on '+esc(S.config.siteUrl.replace(/^https?:\/\//,''))+'</div>';
+  }
+  if(S.loadError){
+    return '<div class="banner error-state"><span class="dot"></span>Not connected — SharePoint fetch failed<span class="spacer"></span><button class="btn btn-ghost btn-sm" data-action="open-settings">Settings</button><button class="btn btn-ghost btn-sm" data-action="reload">Retry</button></div>';
+  }
+  return '<div class="banner sample"><span class="dot"></span>Not yet connected — configure SharePoint settings<span class="spacer"></span><button class="btn btn-ghost btn-sm" data-action="open-settings">Settings</button></div>';
+}
+
+function renderHeader(){
+  return '<div class="header">'+
+    '<div class="logo">SP</div>'+
+    '<div class="header-text"><h1>Succession Planner</h1><p>'+esc(S.config.siteUrl.replace(/^https?:\/\//,''))+' · '+esc(S.config.listName)+'</p></div>'+
+    '<div class="header-actions">'+
+      '<button class="btn btn-ghost" data-action="open-settings">⚙ Settings</button>'+
+      '<button class="btn btn-primary" data-action="reload"'+(S.loading?' disabled':'')+'>'+
+        (S.loading?'<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block"></span> Loading':'↺ Reload')+
+      '</button>'+
+    '</div>'+
+  '</div>';
+}
+
+function renderToolbar(){
+  var list=filtered();
+  var deptOpts='<option value="">All Departments</option>'+depts().map(function(d){ return '<option value="'+esc(d)+'"'+(S.filterDept===d?' selected':'')+'>'+esc(d)+'</option>'; }).join('');
+  var funcOpts='<option value="">All Functions</option>'+funcs().map(function(f){ return '<option value="'+esc(f)+'"'+(S.filterFunc===f?' selected':'')+'>'+esc(f)+'</option>'; }).join('');
+  return '<div class="toolbar">'+
+    '<div class="search-wrap"><span class="search-icon">⌕</span><input id="search-input" placeholder="Search name, title, location, leader…" value="'+esc(S.search)+'"></div>'+
+    '<select class="filter-select" data-filter="dept">'+deptOpts+'</select>'+
+    '<select class="filter-select" data-filter="func">'+funcOpts+'</select>'+
+    '<div class="record-count">'+list.length+' / '+S.employees.length+'</div>'+
+  '</div>';
+}
+
+function renderStats(){
+  var st=stats();
+  return '<div class="stats">'+
+    statCard('👥','Total Employees',st.total,'var(--accent)')+
+    statCard('⭐','Box 4+ in 2026',st.hi,'var(--green)')+
+    statCard('✈','Fully Mobile',st.mob,'var(--blue)')+
+  '</div>';
+}
+function statCard(icon,label,val,color){
+  return '<div class="stat">'+
+    '<div class="stat-icon" style="background:'+color+'22;color:'+color+'">'+icon+'</div>'+
+    '<div><div class="stat-label">'+esc(label)+'</div><div class="stat-value">'+val+'</div></div>'+
+  '</div>';
+}
+
+function renderBoxChip(year, field, d, editing, id){
+  var v=d[field];
+  var color=(v&&BOX[v])?BOX[v].color:'var(--surface3)';
+  var inner;
+  if(editing){
+    var opts='<option value="">-</option>';
+    for(var n=1;n<=5;n++) opts+='<option value="'+n+'"'+(v==n?' selected':'')+'>'+n+' — '+BOX[n].desc+'</option>';
+    inner='<select class="rating-sel" data-edit="'+id+'" data-field="'+field+'" style="color:'+(v?color:'var(--text-muted)')+'">'+opts+'</select>';
+  } else {
+    inner='<div class="box-badge" style="background:'+(v?color:'var(--surface3)')+'">'+( v!=null?v:'-')+'</div>';
+  }
+  return '<div class="rating-chip"><div class="chip-year">'+year+'</div>'+inner+'</div>';
+}
+
+function renderSuccessionCol(key,label,cls,d,editing,id){
+  var v=d[key]||'';
+  var body=editing
+    ?'<textarea class="suc-textarea" data-edit="'+id+'" data-field="'+key+'" placeholder="Comma-separated names…">'+esc(v)+'</textarea>'
+    :'<div class="suc-names'+(v?'':' empty')+'">'+(v?esc(v):'—')+'</div>';
+  return '<div class="suc-col"><div class="suc-label '+cls+'">'+label+'</div>'+body+'</div>';
+}
+
+function renderCard(emp){
+  var editing=S.editingId===emp.id;
+  var d=editing?S.drafts[emp.id]:emp;
+  var saving=!!S.saving[emp.id];
+
+  var mobBlock;
+  if(editing){
+    var mopts='<option value="">—</option>'+MOBILITY.map(function(t){ return '<option value="'+t.v+'"'+(d.mobilityTier==t.v?' selected':'')+'>'+esc(t.label)+'</option>'; }).join('');
+    mobBlock='<select class="mob-select" data-edit="'+emp.id+'" data-field="mobilityTier">'+mopts+'</select>';
+  } else {
+    var mobLabel=MOBILITY.find(function(t){ return t.v===d.mobilityTier; });
+    mobBlock='<div class="meta-pill">'+(mobLabel?esc(mobLabel.label):'Tier —')+'</div>';
   }
 
-  function saveEdit(id){ var draft = state.drafts[id]; if (!draft) { state.editingId = null; return render(); } state.saving[id] = true; render(); var emp = state.employees.find(function(e){ return e.id === id; }); var prev = Object.assign({}, emp); Object.assign(emp, draft); if (state.source === 'sharepoint') { updateItem(state.config, id, draft).then(function(){ state.saving[id] = false; state.editingId = null; delete state.drafts[id]; showStatus('success', 'Saved to SharePoint'); }).catch(function(err){ Object.assign(emp, prev); state.saving[id] = false; showStatus('error', 'Save failed: ' + err.message); render(); }); } else { setTimeout(function(){ state.saving[id] = false; state.editingId = null; delete state.drafts[id]; showStatus('info', 'Saved locally (sample data - not synced to SharePoint)'); }, 250); } }
+  var notesBlock=editing
+    ?'<textarea class="notes-edit" data-edit="'+emp.id+'" data-field="relocationNotes" placeholder="Relocation notes…">'+esc(d.relocationNotes||'')+'</textarea>'
+    :'<div class="notes-view'+(d.relocationNotes?' has-notes':'')+'">'+(d.relocationNotes?esc(d.relocationNotes):'No relocation notes.')+'</div>';
 
-  function load(){ state.loading = true; state.lastError = null; render(); fetchItems(state.config).then(function(items){ state.employees = items; state.source = 'sharepoint'; state.loading = false; showStatus('success', 'Loaded ' + items.length + ' records from SharePoint'); }).catch(function(err){ state.lastError = err.message; state.employees = SAMPLE; state.source = 'sample'; state.loading = false; showStatus('error', 'SharePoint unavailable - showing sample data'); }); }
+  var actions=editing
+    ?'<button class="btn btn-ghost btn-sm" data-action="cancel-edit" data-id="'+emp.id+'"'+(saving?' disabled':'')+'>Cancel</button>'+
+      '<button class="btn btn-success btn-sm" data-action="save-edit" data-id="'+emp.id+'"'+(saving?' disabled':'')+'>'+
+        (saving?'Saving…':'Save')+'</button>'
+    :'<button class="btn btn-ghost btn-sm" data-action="start-edit" data-id="'+emp.id+'">Edit</button>';
 
+  return '<div class="card'+(editing?' is-editing':'')+'" id="card-'+emp.id+'">'+
+    '<div class="card-head">'+
+      '<div class="avatar">'+esc(initials(emp.name))+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="card-name">'+esc(displayName(emp.name))+'</div>'+
+        '<div class="card-title">'+esc(emp.title||'')+(emp.level?' <span style="color:var(--text-dim)">·</span> '+esc(emp.level):'')+'</div>'+
+        '<div class="card-meta">'+esc(emp.department||'')+(emp.department&&emp.location?' · ':'')+esc(emp.location||'')+'</div>'+
+      '</div>'+
+      '<div class="card-acts">'+actions+'</div>'+
+    '</div>'+
+    '<div class="card-body">'+
+      '<div><div class="sec-label">Box Ratings</div>'+
+        '<div class="ratings-row">'+
+          renderBoxChip('2024','box2024',d,editing,emp.id)+
+          renderBoxChip('2025','box2025',d,editing,emp.id)+
+          renderBoxChip('2026','box2026',d,editing,emp.id)+
+        '</div>'+
+      '</div>'+
+      '<div><div class="sec-label">Succession Track</div>'+
+        '<div class="suc-grid">'+
+          renderSuccessionCol('readyNow','Ready Now','now',d,editing,emp.id)+
+          renderSuccessionCol('ready12','1–2 Years','y12',d,editing,emp.id)+
+          renderSuccessionCol('ready35','3–5 Years','y35',d,editing,emp.id)+
+        '</div>'+
+      '</div>'+
+      '<div class="meta-row">'+
+        '<div class="meta-pill">Leader: <strong>'+esc(emp.leader||'—')+'</strong></div>'+
+        (emp.timeInJob?'<div class="meta-pill">In role: <strong>'+esc(emp.timeInJob)+'</strong></div>':'')+
+        '<div style="display:flex;align-items:center;gap:5px"><span style="font-size:11px;color:var(--text-muted)">Mobility:</span>'+mobBlock+'</div>'+
+      '</div>'+
+      '<div><div class="sec-label">Relocation Notes</div>'+notesBlock+'</div>'+
+    '</div>'+
+  '</div>';
+}
+
+function renderError(){
+  if(!S.loadError) return '';
+  return '<div class="error-panel">'+
+    '<h3>Could not load from SharePoint</h3>'+
+    '<p>The request to your SharePoint list failed. See the error below, then check the tips.</p>'+
+    '<div class="error-detail">'+esc(S.loadError)+'</div>'+
+    '<ul class="error-tips">'+
+      '<li><strong>Field name mismatch?</strong> Open Settings → Fields tab → use Field Discovery to see real column names from your list.</li>'+
+      '<li><strong>Wrong list name?</strong> Open Settings and confirm the exact list name (case-sensitive).</li>'+
+      '<li><strong>Permission error?</strong> Make sure you are logged into SharePoint and have Read access.</li>'+
+      '<li><strong>CORS / network error?</strong> This page must be hosted inside SharePoint (as a site page or web part) to access the API. It won\'t work from a local file or external host.</li>'+
+    '</ul>'+
+    '<div style="margin-top:12px;display:flex;gap:8px">'+
+      '<button class="btn btn-ghost btn-sm" data-action="open-settings">⚙ Settings</button>'+
+      '<button class="btn btn-ghost btn-sm" data-action="open-discovery">🔍 Field Discovery</button>'+
+      '<button class="btn btn-primary btn-sm" data-action="reload">↺ Retry</button>'+
+    '</div>'+
+  '</div>';
+}
+
+function renderGrid(){
+  if(S.loading) return '<div class="loading-state"><div class="spinner"></div><div class="loading-label">Fetching records from SharePoint…</div></div>';
+  if(S.loadError) return renderError();
+  var list=filtered();
+  if(S.employees.length===0) return '<div class="empty-state"><h3>No records loaded</h3><p>Click Reload to fetch from SharePoint, or check Settings if the connection is not configured.</p><button class="btn btn-primary" data-action="reload">↺ Load Records</button></div>';
+  if(list.length===0) return '<div class="empty-state"><h3>No matches</h3><p>Try clearing the search or filters.</p></div>';
+  return '<div class="grid">'+list.map(renderCard).join('')+'</div>';
+}
+
+/* ─────────────────────────────────────────
+   Settings modal
+───────────────────────────────────────── */
+function renderSettingsModal(){
+  var c=S.config; var fm=S.fieldMap;
+  var detected=detectSiteUrl();
+  var detHint=(detected&&detected!==c.siteUrl)?'<div style="font-size:11px;color:var(--accent);margin-bottom:10px;cursor:pointer" data-action="use-detected">↑ Use detected: '+esc(detected)+'</div>':'';
+  var connectionTab=''+
+    detHint+
+    '<div class="form-group"><label class="form-label">Site URL</label>'+
+      '<input class="form-input" id="cfg-site" placeholder="https://tenant.sharepoint.com/teams/your-site" value="'+esc(c.siteUrl)+'">'+
+      '<div class="form-hint">Full URL to the SharePoint site — not the list, not a page.</div>'+
+    '</div>'+
+    '<div class="form-group"><label class="form-label">List Name (exact, case-sensitive)</label>'+
+      '<input class="form-input" id="cfg-list" placeholder="SAMPLE TR Succession" value="'+esc(c.listName)+'">'+
+    '</div>'+
+    '<div style="margin-top:4px"><button class="btn btn-ghost btn-sm" data-action="open-discovery">🔍 Field Discovery — see what columns your list actually has</button></div>';
+
+  var fieldLabels={
+    eeId:'EE ID',name:'Full Name',title:'Job Title',level:'Level',location:'Location',
+    leader:'Leader',department:'Department',function:'Function',timeInJob:'Time in Job',
+    hireDate:'Hire Date',box2024:'Box 2024',box2025:'Box 2025',box2026:'Box 2026',
+    nextRole:'Next Role',mobilityTier:'Mobility Tier',suitablyPlaced:'Suitably Placed',
+    readyNow:'Ready Now',ready12:'Ready 1-2 Yrs',ready35:'Ready 3-5 Yrs',
+    relocationAvail:'Relocation Avail',relocationNotes:'Relocation Notes'
+  };
+  var fieldRows=Object.keys(fieldLabels).map(function(k){
+    return '<tr><td>'+esc(fieldLabels[k])+'</td><td><input class="field-input" data-fm="'+k+'" value="'+esc(fm[k]||'')+'" placeholder="SP internal name"></td></tr>';
+  }).join('');
+  var fieldsTab=''+
+    '<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.6">These are the <strong style="color:var(--text)">internal SharePoint column names</strong> (not display names). Spaces become <code style="font-size:10px;color:var(--accent)">_x0020_</code>. Use Field Discovery to find the exact names from your list.</div>'+
+    '<table class="field-table"><thead><tr><th>App Field</th><th>SP Internal Name</th></tr></thead><tbody>'+fieldRows+'</tbody></table>';
+
+  return '<div class="overlay"><div class="modal">'+
+    '<h2>SharePoint Settings</h2>'+
+    '<div class="modal-sub">Connect to your list and fix field name mappings.</div>'+
+    '<div class="tab-bar">'+
+      '<button class="tab'+(S.modalTab==='connection'?' active':'')+'" data-tab="connection">Connection</button>'+
+      '<button class="tab'+(S.modalTab==='fields'?' active':'')+'" data-tab="fields">Field Mapping</button>'+
+    '</div>'+
+    '<div id="modal-body">'+(S.modalTab==='connection'?connectionTab:fieldsTab)+'</div>'+
+    '<div class="modal-footer">'+
+      '<button class="btn btn-ghost" data-action="close-modal">Cancel</button>'+
+      '<button class="btn btn-primary" data-action="save-settings">Save &amp; Reload</button>'+
+    '</div>'+
+  '</div></div>';
+}
+
+/* ─────────────────────────────────────────
+   Discovery modal
+───────────────────────────────────────── */
+function renderDiscoveryModal(){
+  var disco=S.discovery;
+  var tags=disco.fields.length>0?'<div class="field-detected">'+
+    disco.fields.map(function(f){
+      return '<div class="field-tag" data-copy-field="'+esc(f)+'" title="Click to copy">'+esc(f)+'</div>';
+    }).join('')+
+  '</div>':'';
+  return '<div class="overlay"><div class="modal">'+
+    '<h2>Field Discovery</h2>'+
+    '<div class="modal-sub">Fetches one row from your SharePoint list and shows the exact internal column names.</div>'+
+    '<p class="disco-hint">Click a field name to copy it. Then paste it into the Field Mapping tab.</p>'+
+    '<button class="btn btn-primary btn-sm" style="margin-bottom:12px" data-action="run-discovery">Fetch from SharePoint</button>'+
+    (disco.raw?'<div class="disco-area">'+esc(disco.raw)+'</div>':'')+
+    tags+
+    '<div class="modal-footer">'+
+      '<button class="btn btn-ghost" data-action="back-to-settings">← Back to Settings</button>'+
+    '</div>'+
+  '</div></div>';
+}
+
+/* ─────────────────────────────────────────
+   Main render
+───────────────────────────────────────── */
+function render(){
+  var modalHtml='';
+  if(S.modal==='settings') modalHtml=renderSettingsModal();
+  else if(S.modal==='discovery') modalHtml=renderDiscoveryModal();
+
+  document.getElementById('root').innerHTML=
+    '<div class="app">'+
+      renderBanner()+
+      renderHeader()+
+      (S.employees.length>0||S.loading?renderToolbar():'')+
+      (S.employees.length>0?renderStats():'')+
+      '<div class="main-content">'+renderGrid()+'</div>'+
+      (S.toast?'<div class="toast '+S.toast.type+'">'+esc(S.toast.msg)+'</div>':'')+
+      modalHtml+
+    '</div>';
+  attachEvents();
+}
+
+/* ─────────────────────────────────────────
+   Events
+───────────────────────────────────────── */
+function attachEvents(){
+  // Actions
+  document.querySelectorAll('[data-action]').forEach(function(el){
+    el.addEventListener('click',function(e){
+      e.stopPropagation();
+      var a=el.getAttribute('data-action');
+      var idAttr=el.getAttribute('data-id'); var id=idAttr?parseInt(idAttr,10):null;
+
+      if(a==='reload'){ return load(); }
+      if(a==='open-settings'){ S.modal='settings'; S.modalTab='connection'; return render(); }
+      if(a==='close-modal'){ S.modal=null; return render(); }
+      if(a==='open-discovery'){ S.modal='discovery'; return render(); }
+      if(a==='back-to-settings'){ S.modal='settings'; return render(); }
+      if(a==='run-discovery'){ return runDiscovery(); }
+
+      if(a==='use-detected'){
+        var det=detectSiteUrl();
+        if(det){ var si=document.getElementById('cfg-site'); if(si) si.value=det; }
+        return;
+      }
+
+      if(a==='save-settings'){
+        // Gather connection
+        var site=(document.getElementById('cfg-site')||{}).value||S.config.siteUrl;
+        var list=(document.getElementById('cfg-list')||{}).value||S.config.listName;
+        // Gather field map
+        var newFm=Object.assign({},S.fieldMap);
+        newFm.id='ID'; // always fixed
+        document.querySelectorAll('[data-fm]').forEach(function(inp){
+          var k=inp.getAttribute('data-fm'); var v=inp.value.trim();
+          if(v) newFm[k]=v;
+        });
+        S.config={siteUrl:site.trim(),listName:list.trim()};
+        S.fieldMap=newFm;
+        saveStoredConfig(Object.assign({},S.config,{fieldMap:newFm}));
+        S.modal=null;
+        return load();
+      }
+
+      if(a==='start-edit'){
+        S.editingId=id;
+        var emp=S.employees.find(function(e){return e.id===id;});
+        S.drafts[id]=Object.assign({},emp);
+        return render();
+      }
+      if(a==='cancel-edit'){ S.editingId=null; delete S.drafts[id]; return render(); }
+      if(a==='save-edit'){ return saveEdit(id); }
+    });
+  });
+
+  // Tabs
+  document.querySelectorAll('[data-tab]').forEach(function(el){
+    el.addEventListener('click',function(){
+      S.modalTab=el.getAttribute('data-tab');
+      render();
+    });
+  });
+
+  // Search
+  var si=document.getElementById('search-input');
+  if(si){
+    si.addEventListener('input',function(e){ S.search=e.target.value; render(); var sf=document.getElementById('search-input'); if(sf){sf.focus();sf.setSelectionRange(S.search.length,S.search.length);} });
+  }
+
+  // Filters
+  document.querySelectorAll('[data-filter]').forEach(function(sel){
+    sel.addEventListener('change',function(e){
+      var f=sel.getAttribute('data-filter');
+      if(f==='dept') S.filterDept=e.target.value;
+      if(f==='func') S.filterFunc=e.target.value;
+      render();
+    });
+  });
+
+  // Inline field edits
+  document.querySelectorAll('[data-edit]').forEach(function(el){
+    var id=parseInt(el.getAttribute('data-edit'),10);
+    var field=el.getAttribute('data-field');
+    var handler=function(e){
+      var v=e.target.value;
+      if(/^box/.test(field)) v=v?parseInt(v,10):null;
+      S.drafts[id]=S.drafts[id]||{};
+      S.drafts[id][field]=v;
+    };
+    el.addEventListener('change',handler);
+    el.addEventListener('input',handler);
+  });
+
+  // Field tag copy
+  document.querySelectorAll('[data-copy-field]').forEach(function(el){
+    el.addEventListener('click',function(){
+      var val=el.getAttribute('data-copy-field');
+      try{ navigator.clipboard.writeText(val).then(function(){ toast('info','Copied: '+val); }); }
+      catch(e){ toast('info',val); }
+    });
+  });
+
+  // Close modal on overlay click
+  document.querySelectorAll('.overlay').forEach(function(ov){
+    ov.addEventListener('click',function(e){
+      if(e.target===ov){ S.modal=null; render(); }
+    });
+  });
+}
+
+/* ─────────────────────────────────────────
+   Boot
+───────────────────────────────────────── */
+render(); // show UI immediately
+if(isSharePointHost()){
+  var det=detectSiteUrl();
+  if(det) S.config.siteUrl=det;
   load();
+} else {
+  // Not in SP — show settings prompt but don't crash
+  S.loadError='This page must be hosted inside SharePoint to access the list API. Host it as a SharePoint site page and reload.';
+  render();
+}
+
 })();
 </script>
 </body>
